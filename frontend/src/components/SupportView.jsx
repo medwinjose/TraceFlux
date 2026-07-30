@@ -80,20 +80,18 @@ export default function SupportView() {
   let globalIndex = 0;
 
   return (
-    <div className="view-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingBottom: 0 }}>
-      <div className="view-header" style={{ flexShrink: 0 }}>
+    <div className="view-container">
+      <div className="view-header">
         <h2 className="view-title">FAQ & Documentation</h2>
         <p className="view-subtitle">Comprehensive answers on TraceNet's architecture, regulatory impact, and integration.</p>
       </div>
 
       <div style={{
-        flex: 1, 
-        overflowY: 'auto',
-        paddingRight: 8,
         display: 'flex',
         flexDirection: 'column',
         gap: 32,
-        paddingBottom: 40
+        paddingBottom: 40,
+        paddingRight: 4
       }}>
         {Object.entries(groupedFaqs).map(([category, questions], catIdx) => (
           <div key={category} style={{ animation: `slide-in-up 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards`, animationDelay: `${catIdx * 0.1}s` }}>
