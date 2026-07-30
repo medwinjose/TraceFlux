@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Topbar({ wsConnected, onReportFraud, onReset, isReporting, onSearch }) {
+export default function Header({ wsConnected, onReportFraud, onReset, isReporting, onSearch }) {
   const [query, setQuery] = useState('');
 
   const handleSearch = (e) => {

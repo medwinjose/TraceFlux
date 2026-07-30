@@ -43,6 +43,20 @@ export default function AlertFeed({ alerts = [] }) {
                 <div className="alert-bank">{alert.bank_id}</div>
                 <div className="alert-msg">{alert.message}</div>
 
+                {alert.reason_plain && (
+                  <div className="alert-reason">
+                    <div className="alert-reason-label">Freeze Reason</div>
+                    {alert.reason_plain}
+                  </div>
+                )}
+
+                {alert.signature && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 1, fontFamily: 'JetBrains Mono, monospace' }}>HMAC-SIG</span>
+                    <span style={{ fontSize: 9, color: 'var(--amber)', fontFamily: 'JetBrains Mono, monospace' }}>{alert.signature}</span>
+                  </div>
+                )}
+
                 {alert.traced_path && alert.traced_path.length > 0 && (
                   <div className="alert-trace">
                     {alert.traced_path.map((node, j) => (

@@ -55,10 +55,10 @@ def test_ml_scoring_and_explainability():
 def test_demo_graph_simulation():
     graph, fraud_chain = build_demo_graph(num_normal_accounts=40, chain_length=5)
     assert len(graph.accounts) >= 45, "Graph count insufficient"
-    assert len(fraud_chain) == 5, "Fraud chain length mismatch"
+    assert len(fraud_chain) == 9, "Fraud chain length mismatch"
 
     frozen = graph.report_fraud("VICTIM")
-    assert len(frozen) == 5, f"Expected 5 frozen nodes, got {len(frozen)}"
+    assert len(frozen) == 9, f"Expected 9 frozen nodes, got {len(frozen)}"
     assert frozen == fraud_chain, f"Frozen chain {frozen} does not match injected chain {fraud_chain}"
 def test_reset_and_error_resilience():
     """

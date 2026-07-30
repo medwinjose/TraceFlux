@@ -17,12 +17,10 @@ export default function AssetsView({ nodes }) {
   const sortedBanks = Object.entries(bankStats).sort((a, b) => b[1].count - a[1].count);
 
   return (
-    <div style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', gap: 32, background: 'var(--bg-void)', overflowY: 'auto' }}>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 24 }}>
-        <h2 style={{ fontSize: 20, color: 'var(--text-primary)', letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: "'Playfair Display', serif" }}>
-          Institutional Exposure
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 8 }}>
+    <div className="view-container">
+      <div className="view-header">
+        <h2 className="view-title">Institutional Exposure</h2>
+        <p className="view-subtitle">
           Distribution of monitored accounts across connected financial institutions.
         </p>
       </div>
@@ -100,12 +98,6 @@ export default function AssetsView({ nodes }) {
           );
         })}
       </div>
-      <style>{`
-        .hover-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.06) !important;
-        }
-      `}</style>
     </div>
   );
 }

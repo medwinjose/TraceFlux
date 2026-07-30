@@ -21,12 +21,12 @@ function scoreColor(score) {
   return 'var(--cyan)';
 }
 function scoreGradient(score) {
-  if (score >= 0.75) return 'linear-gradient(90deg,#7f1d1d,#ef4444)';
-  if (score >= 0.45) return 'linear-gradient(90deg,#78350f,#f59e0b)';
-  return 'linear-gradient(90deg,#0c4a6e,#06b6d4)';
+  if (score >= 0.75) return 'linear-gradient(90deg, var(--red), var(--red-hi))';
+  if (score >= 0.45) return 'linear-gradient(90deg, var(--amber), var(--amber-hi))';
+  return 'linear-gradient(90deg, var(--cyan), var(--cyan-hi))';
 }
 
-export default function RiskPanel({ selectedNodeId, nodes = [] }) {
+export default function RiskPanel({ selectedNodeId, nodes = [], onSelectNode }) {
   const [explanation, setExplanation] = useState(null);
   const [loading, setLoading]         = useState(false);
   const [search, setSearch]           = useState('');
@@ -216,7 +216,7 @@ export default function RiskPanel({ selectedNodeId, nodes = [] }) {
               <div
                 key={n.id}
                 className={`risk-row ${cls} ${selectedNodeId === n.id ? 'selected' : ''}`}
-                onClick={() => {}}
+                onClick={() => onSelectNode && onSelectNode(n.id)}
               >
                 <div style={{ flex:1, minWidth:0 }}>
                   <div className="risk-id" style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>

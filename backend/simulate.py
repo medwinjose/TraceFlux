@@ -55,21 +55,21 @@ def build_demo_graph(num_normal_accounts: int = 15, chain_length: int = 5) -> Tu
     fraud_tx_start = time.time() - 600  # 10 minutes ago
     
     # Hop 1: Victim to primary mule
-    g.record_transaction(Transaction(f"F_TX1", "VICTIM", "MULE1", stolen_amount, fraud_tx_start))
+    g.record_transaction(Transaction("F_TX1", "VICTIM", "MULE1", stolen_amount, fraud_tx_start))
     
     # Hop 2: Split to MULE2a, MULE2b
-    g.record_transaction(Transaction(f"F_TX2a", "MULE1", "MULE2a", stolen_amount * 0.6, fraud_tx_start + 120))
-    g.record_transaction(Transaction(f"F_TX2b", "MULE1", "MULE2b", stolen_amount * 0.4, fraud_tx_start + 125))
+    g.record_transaction(Transaction("F_TX2a", "MULE1", "MULE2a", stolen_amount * 0.6, fraud_tx_start + 120))
+    g.record_transaction(Transaction("F_TX2b", "MULE1", "MULE2b", stolen_amount * 0.4, fraud_tx_start + 125))
     
     # Hop 3: Split to MULE3a, MULE3b, MULE3c
-    g.record_transaction(Transaction(f"F_TX3a", "MULE2a", "MULE3a", stolen_amount * 0.3, fraud_tx_start + 240))
-    g.record_transaction(Transaction(f"F_TX3b", "MULE2a", "MULE3b", stolen_amount * 0.28, fraud_tx_start + 245))
-    g.record_transaction(Transaction(f"F_TX3c", "MULE2b", "MULE3c", stolen_amount * 0.38, fraud_tx_start + 250))
+    g.record_transaction(Transaction("F_TX3a", "MULE2a", "MULE3a", stolen_amount * 0.3, fraud_tx_start + 240))
+    g.record_transaction(Transaction("F_TX3b", "MULE2a", "MULE3b", stolen_amount * 0.28, fraud_tx_start + 245))
+    g.record_transaction(Transaction("F_TX3c", "MULE2b", "MULE3c", stolen_amount * 0.38, fraud_tx_start + 250))
     
     # Hop 4: Cash out
-    g.record_transaction(Transaction(f"F_TX4a", "MULE3a", "CASH_OUT1", stolen_amount * 0.29, fraud_tx_start + 360))
-    g.record_transaction(Transaction(f"F_TX4b", "MULE3b", "CASH_OUT1", stolen_amount * 0.27, fraud_tx_start + 365))
-    g.record_transaction(Transaction(f"F_TX4c", "MULE3c", "CASH_OUT2", stolen_amount * 0.37, fraud_tx_start + 370))
+    g.record_transaction(Transaction("F_TX4a", "MULE3a", "CASH_OUT1", stolen_amount * 0.29, fraud_tx_start + 360))
+    g.record_transaction(Transaction("F_TX4b", "MULE3b", "CASH_OUT1", stolen_amount * 0.27, fraud_tx_start + 365))
+    g.record_transaction(Transaction("F_TX4c", "MULE3c", "CASH_OUT2", stolen_amount * 0.37, fraud_tx_start + 370))
 
     # Calculate initial risk scores for all accounts
     for acc_id in g.accounts:

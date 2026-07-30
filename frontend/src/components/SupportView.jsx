@@ -2,10 +2,10 @@ import React from 'react';
 
 export default function SupportView() {
   return (
-    <div style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', gap: 32, background: 'var(--bg-void)', overflowY: 'auto' }}>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
-        <h2 style={{ fontSize: 24, color: 'var(--text-primary)', fontFamily: '"Playfair Display", serif', fontWeight: 600 }}>Technical Support</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Contact system administrators or view TraceNet documentation.</p>
+    <div className="view-container">
+      <div className="view-header">
+        <h2 className="view-title">Technical Support</h2>
+        <p className="view-subtitle">Contact system administrators or view TraceNet documentation.</p>
       </div>
 
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>

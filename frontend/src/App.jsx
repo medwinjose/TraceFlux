@@ -9,6 +9,7 @@ import WatchlistView from './components/WatchlistView';
 import AssetsView    from './components/AssetsView';
 import SettingsView  from './components/SettingsView';
 import SupportView   from './components/SupportView';
+import EvidenceView  from './components/EvidenceView';
 
 export default function App() {
   const [nodes,          setNodes]          = useState([]);
@@ -46,16 +47,13 @@ export default function App() {
       // Use relative path so it goes through the Vite WS proxy
       const ws = new WebSocket(`ws://${location.host}/ws`);
 
-      ws.onopen = () => {
-        setWsConnected(true);
-        console.log('[TraceNet] WS connected');
-      };
+      ws.onopen = () => setWsConnected(true);
 
       ws.onmessage = ({ data }) => {
         try {
           const { event: evt, data: payload } = JSON.parse(data);
           if (evt === 'TAG_PROPAGATED') {
-            const { account_id, traced_path, bank_id, hop } = payload;
+            const { account_id, traced_path, bank_id, hop, reason_plain, signature, event_hash, seq } = payload;
             setActiveTrace(traced_path || []);
             setNodes(prev =>
               prev.map(n =>
@@ -71,7 +69,11 @@ export default function App() {
               reason:      'PROPAGATED_TAG',
               timestamp:   Date.now() / 1000,
               traced_path,
-              message:     `AUTOFREEZE: Account ${account_id} @ ${bank_id} locked via Tag Propagation [Hop ${hop}]`,
+              reason_plain: reason_plain || null,
+              signature:    signature    || null,
+              event_hash:   event_hash   || null,
+              seq:          seq          || null,
+              message: `AUTOFREEZE: Account ${account_id} @ ${bank_id} locked via Tag Propagation [Hop ${hop}]`,
             }, ...prev]);
           } else if (evt === 'DEMO_RESET') {
             setActiveTrace([]);
@@ -171,7 +173,8 @@ export default function App() {
                   </div>
                   <RiskPanel
                     selectedNodeId={selectedNode}
-                    nodes={nodes.map(n => ({ ...n, id: n.id }))}
+                    nodes={nodes}
+                    onSelectNode={setSelectedNode}
                   />
                 </div>
                 <AlertFeed alerts={alerts} />
@@ -179,15 +182,16 @@ export default function App() {
             </>
           )}
 
-          {activeView === 'watch' && <WatchlistView nodes={nodes} />}
-          {activeView === 'assets' && <AssetsView nodes={nodes} />}
+          {activeView === 'watch'    && <WatchlistView nodes={nodes} />}
+          {activeView === 'assets'   && <AssetsView nodes={nodes} />}
           {activeView === 'settings' && <SettingsView />}
-          {activeView === 'support' && <SupportView />}
+          {activeView === 'support'  && <SupportView />}
+          {activeView === 'evidence' && <EvidenceView />}
           {activeView === 'alerts' && (
-            <div style={{ flex: 1, padding: 24, background: 'var(--bg-void)', overflowY: 'auto' }}>
-              <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 24 }}>
-                <h2 style={{ fontSize: 18, color: 'var(--text-primary)', letterSpacing: 2, textTransform: 'uppercase' }}>Interdiction Log</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Full history of system auto-freezes and tag propagations.</p>
+            <div className="view-container">
+              <div className="view-header">
+                <h2 className="view-title">Interdiction Log</h2>
+                <p className="view-subtitle">Full history of system auto-freezes and tag propagations.</p>
               </div>
               <AlertFeed alerts={alerts} />
             </div>

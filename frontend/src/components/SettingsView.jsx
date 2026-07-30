@@ -2,10 +2,10 @@ import React from 'react';
 
 export default function SettingsView() {
   return (
-    <div style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', gap: 32, background: 'var(--bg-void)', overflowY: 'auto' }}>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
-        <h2 style={{ fontSize: 24, color: 'var(--text-primary)', fontFamily: '"Playfair Display", serif', fontWeight: 600 }}>System Settings</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Manage fraud interdiction parameters and system preferences.</p>
+    <div className="view-container">
+      <div className="view-header">
+        <h2 className="view-title">System Settings</h2>
+        <p className="view-subtitle">Manage fraud interdiction parameters and system preferences.</p>
       </div>
 
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
