@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './RiskPanel.css';
 
-const RiskPanel = ({ riskAccounts, selectedNodeId }) => {
+const RiskPanel = ({ riskAccounts, selectedNodeId, nodes }) => {
   const [localAccounts, setLocalAccounts] = useState([]);
   const [explanation, setExplanation] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -57,24 +57,35 @@ const RiskPanel = ({ riskAccounts, selectedNodeId }) => {
       });
   }, [selectedNodeId, isSelectedNodeMode]);
 
-  // Fetch all accounts when in selected node mode but selectedNodeId is null
+  // Sync accounts list when in selected node mode but selectedNodeId is null
   useEffect(() => {
     if (!isSelectedNodeMode || selectedNodeId) return;
 
-    fetch(`http://127.0.0.1:8000/accounts`)
-      .then((res) => res.json())
-      .then((accounts) => {
-        setLocalAccounts(
-          accounts.map((acc) => ({
-            account_id: acc.account_id,
-            risk_score: acc.risk_score,
-            classification: acc.classification,
-            top_features: [], // Will load on expand
-          }))
-        );
-      })
-      .catch((err) => console.error("Error fetching accounts:", err));
-  }, [selectedNodeId, isSelectedNodeMode]);
+    if (nodes && nodes.length > 0) {
+      setLocalAccounts(
+        nodes.map((acc) => ({
+          account_id: acc.id || acc.account_id,
+          risk_score: acc.risk_score,
+          classification: acc.classification,
+          top_features: [],
+        }))
+      );
+    } else {
+      fetch(`http://127.0.0.1:8000/accounts`)
+        .then((res) => res.json())
+        .then((accounts) => {
+          setLocalAccounts(
+            accounts.map((acc) => ({
+              account_id: acc.account_id,
+              risk_score: acc.risk_score,
+              classification: acc.classification,
+              top_features: [],
+            }))
+          );
+        })
+        .catch((err) => console.error("Error fetching accounts:", err));
+    }
+  }, [selectedNodeId, isSelectedNodeMode, nodes]);
 
   // Fetch explanation when an account is expanded in the list
   const fetchLocalExplanation = (accId) => {
