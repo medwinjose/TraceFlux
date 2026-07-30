@@ -54,7 +54,7 @@ export default function Sidebar({ activeView, onViewChange, alertCount }) {
           className={`nav-item ${activeView === 'support' ? 'active' : ''}`} 
           onClick={() => onViewChange('support')}
         >
-          <span className="nav-icon">💡</span>
+          <span className="nav-icon">ℹ</span>
           <span>FAQ & Docs</span>
         </button>
       </nav>

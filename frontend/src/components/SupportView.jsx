@@ -60,7 +60,14 @@ export default function SupportView() {
     { category: "Extreme Crime & Edge Cases",
       q: "Is this applicable to terror financing or human trafficking networks?", a: "Yes. Both rely on obfuscating the flow of money through deep, multi-layered networks. TraceNet's ability to cross institutional boundaries at the switch level makes it uniquely capable of dismantling these financial structures in real-time." },
     { category: "Extreme Crime & Edge Cases",
-      q: "What if criminals use crypto-exchanges to cash out?", a: "TraceNet can integrate with the fiat on/off ramps of crypto-exchanges. If a trace tag hits an exchange's designated bank account, TraceNet dispatches a high-priority freeze command to the exchange's API, halting conversion before it reaches decentralized networks." }
+      q: "What if criminals use crypto-exchanges to cash out?", a: "TraceNet can integrate with the fiat on/off ramps of crypto-exchanges. If a trace tag hits an exchange's designated bank account, TraceNet dispatches a high-priority freeze command to the exchange's API, halting conversion before it reaches decentralized networks." },
+      
+    { category: "Cryptography & Web3",
+      q: "Crypto is untraceable, so how does TraceNet solve that?", a: "While decentralized ledgers offer pseudonymity, the entry and exit points (fiat on/off ramps) are highly regulated. TraceNet monitors the behavioral metadata of fiat transfers immediately preceding or following a crypto transaction, flagging suspicious layering before the funds enter the blockchain." },
+    { category: "Cryptography & Web3",
+      q: "Can criminals use privacy coins like Monero to break the Evidence Chain?", a: "TraceNet operates at the fiat banking layer. If illicit funds are converted into privacy coins, TraceNet logs the exchange endpoint as a terminal node and generates an automated Suspicious Activity Report (SAR), forcing the exchange to freeze the account under AML/KYC regulations." },
+    { category: "Cryptography & Web3",
+      q: "What happens if bad actors employ advanced mixing services or tumblers?", a: "Mixing services generate high-velocity, highly-fragmented transaction webs. TraceNet's graph engine excels at detecting these precise topological signatures. The anomaly scorer calculates a 'fragmentation index', flagging the cluster even before funds consolidate at the exit node." }
   ];
 
   // Group FAQs by category
@@ -115,17 +122,18 @@ export default function SupportView() {
                     onMouseEnter={() => setHoveredIndex(currentIndex)}
                     onMouseLeave={() => setHoveredIndex(null)}
                     style={{
-                      background: isOpen ? 'rgba(255, 255, 255, 0.7)' : (isHovered ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.3)'),
+                      background: isOpen ? 'rgba(255, 255, 255, 0.7)' : (isHovered ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.3)'),
                       backdropFilter: 'blur(12px)',
                       WebkitBackdropFilter: 'blur(12px)',
                       border: '1px solid',
+                      borderLeft: isHovered ? '3px solid var(--cyan)' : '1px solid var(--border-lo)',
                       borderColor: isOpen ? 'var(--border-md)' : (isHovered ? 'var(--border-hi)' : 'var(--border-lo)'),
                       borderRadius: 8,
                       overflow: 'hidden',
                       cursor: 'pointer',
-                      transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                      boxShadow: isOpen ? '0 4px 12px rgba(0,0,0,0.05)' : (isHovered ? '0 2px 8px rgba(0,0,0,0.03)' : 'none'),
-                      transform: isOpen ? 'scale(1.005)' : (isHovered ? 'scale(1.002) translateX(2px)' : 'scale(1)')
+                      transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                      boxShadow: isOpen ? '0 8px 24px rgba(0,0,0,0.08)' : (isHovered ? '0 4px 16px rgba(0,255,255,0.1)' : 'none'),
+                      transform: isOpen ? 'scale(1.01)' : (isHovered ? 'scale(1.008) translateX(4px)' : 'scale(1)')
                     }}
                   >
                     <div style={{ 
