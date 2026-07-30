@@ -1,393 +1,240 @@
 import React, { useState, useEffect } from 'react';
-import './RiskPanel.css';
 
-const RiskPanel = ({ riskAccounts, selectedNodeId, nodes }) => {
-  const [localAccounts, setLocalAccounts] = useState([]);
+const FEAT_LABELS = {
+  fan_out_ratio:       'Fan-Out Ratio',
+  velocity:            'Tx Velocity',
+  dormant_reactivation:'Dormant Reactivation',
+  structuring_score:   'Structuring Activity',
+  hold_time_inverse:   'Short Hold Time',
+};
+const FEAT_DESC = {
+  fan_out_ratio:        'Split & forward of incoming funds to unique recipients.',
+  velocity:             'Frequency of transactions in a recent time window.',
+  dormant_reactivation: 'Sudden reactivation after 30+ days of dormancy.',
+  structuring_score:    'Transactions kept deliberately under reporting thresholds.',
+  hold_time_inverse:    'Funds are instantly forwarded after receipt.',
+};
+
+function scoreColor(score) {
+  if (score >= 0.75) return 'var(--red)';
+  if (score >= 0.45) return 'var(--amber)';
+  return 'var(--cyan)';
+}
+function scoreGradient(score) {
+  if (score >= 0.75) return 'linear-gradient(90deg,#7f1d1d,#ef4444)';
+  if (score >= 0.45) return 'linear-gradient(90deg,#78350f,#f59e0b)';
+  return 'linear-gradient(90deg,#0c4a6e,#06b6d4)';
+}
+
+export default function RiskPanel({ selectedNodeId, nodes = [] }) {
   const [explanation, setExplanation] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterClass, setFilterClass] = useState('ALL');
-  const [sortBy, setSortBy] = useState('SCORE_DESC');
-  const [expandedAccount, setExpandedAccount] = useState(null);
+  const [loading, setLoading]         = useState(false);
+  const [search, setSearch]           = useState('');
+  const [filter, setFilter]           = useState('ALL');
+  const [sort,   setSort]             = useState('SCORE_DESC');
 
-  // Detect if we are in "selected node mode" (when selectedNodeId is passed or we are in the main dashboard)
-  // or "standalone mode" (when riskAccounts prop is provided)
-  const isSelectedNodeMode = riskAccounts === undefined;
-
-  // Fetch explanation when selectedNodeId changes
+  /* Fetch explanation when a node is selected */
   useEffect(() => {
-    if (!isSelectedNodeMode || !selectedNodeId) {
-      setExplanation(null);
-      return;
-    }
-
+    if (!selectedNodeId) { setExplanation(null); return; }
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/accounts/${selectedNodeId}/explain`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Account not found");
-        return res.json();
-      })
-      .then((contributions) => {
-        fetch(`http://127.0.0.1:8000/accounts`)
-          .then((res) => res.json())
-          .then((accounts) => {
-            const acc = accounts.find((a) => a.account_id === selectedNodeId);
-            if (acc) {
-              const topFeatures = Object.entries(contributions)
-                .map(([feature, contribution]) => ({ feature, contribution }))
-                .sort((a, b) => b.contribution - a.contribution);
+    Promise.all([
+      fetch(`/api/accounts/${selectedNodeId}/explain`).then(r => r.json()),
+      fetch('/api/accounts').then(r => r.json()),
+    ]).then(([contribs, accounts]) => {
+      const acc = accounts.find(a => a.account_id === selectedNodeId);
+      if (acc) {
+        const features = Object.entries(contribs)
+          .map(([k, v]) => ({ key: k, val: v }))
+          .sort((a, b) => b.val - a.val);
+        setExplanation({ ...acc, features });
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [selectedNodeId]);
 
-              setExplanation({
-                account_id: selectedNodeId,
-                risk_score: acc.risk_score,
-                classification: acc.classification,
-                top_features: topFeatures,
-              });
-            }
-            setLoading(false);
-          })
-          .catch((err) => {
-            console.error("Error fetching account list:", err);
-            setLoading(false);
-          });
-      })
-      .catch((err) => {
-        console.error("Failed to fetch ML explanation:", err);
-        setLoading(false);
-      });
-  }, [selectedNodeId, isSelectedNodeMode]);
-
-  // Sync accounts list when in selected node mode but selectedNodeId is null
-  useEffect(() => {
-    if (!isSelectedNodeMode || selectedNodeId) return;
-
-    if (nodes && nodes.length > 0) {
-      setLocalAccounts(
-        nodes.map((acc) => ({
-          account_id: acc.id || acc.account_id,
-          risk_score: acc.risk_score,
-          classification: acc.classification,
-          top_features: [],
-        }))
-      );
-    } else {
-      fetch(`http://127.0.0.1:8000/accounts`)
-        .then((res) => res.json())
-        .then((accounts) => {
-          setLocalAccounts(
-            accounts.map((acc) => ({
-              account_id: acc.account_id,
-              risk_score: acc.risk_score,
-              classification: acc.classification,
-              top_features: [],
-            }))
-          );
-        })
-        .catch((err) => console.error("Error fetching accounts:", err));
-    }
-  }, [selectedNodeId, isSelectedNodeMode, nodes]);
-
-  // Fetch explanation when an account is expanded in the list
-  const fetchLocalExplanation = (accId) => {
-    if (expandedAccount === accId) {
-      setExpandedAccount(null);
-      return;
-    }
-
-    setExpandedAccount(accId);
-    
-    const accIndex = localAccounts.findIndex(a => a.account_id === accId);
-    if (accIndex !== -1 && localAccounts[accIndex].top_features && localAccounts[accIndex].top_features.length > 0) {
-      return;
-    }
-
-    fetch(`http://127.0.0.1:8000/accounts/${accId}/explain`)
-      .then(res => res.json())
-      .then(contributions => {
-        const topFeatures = Object.entries(contributions)
-          .map(([feature, contribution]) => ({ feature, contribution }))
-          .sort((a, b) => b.contribution - a.contribution);
-
-        setLocalAccounts(prev =>
-          prev.map(a =>
-            a.account_id === accId ? { ...a, top_features: topFeatures } : a
-          )
-        );
-      })
-      .catch(err => console.error("Error fetching local explanation:", err));
-  };
-
-  const getFeatureDisplayName = (featureKey) => {
-    const mapping = {
-      fan_out_ratio: 'Fan-Out Ratio',
-      velocity: 'Tx Velocity',
-      dormant_reactivation: 'Dormant Reactivation',
-      structuring_score: 'Structuring Activity',
-      hold_time_inverse: 'Short Hold Time (Inverse)',
-    };
-    return mapping[featureKey] || featureKey;
-  };
-
-  const getFeatureDescription = (featureKey) => {
-    const descriptions = {
-      fan_out_ratio: 'Split & forward of incoming funds to unique recipients.',
-      velocity: 'Frequency of transactions in a recent time frame.',
-      dormant_reactivation: 'Sudden reactivation after 30+ days of dormancy.',
-      structuring_score: 'Transactions deliberately kept under reporting thresholds.',
-      hold_time_inverse: 'Funds are instantly forwarded after reception.',
-    };
-    return descriptions[featureKey] || 'Calculated behavioral risk feature.';
-  };
-
-  // Select active accounts list
-  const activeAccounts = isSelectedNodeMode ? localAccounts : riskAccounts;
-  const totalMonitored = (activeAccounts || []).length;
-  const highRiskCount = (activeAccounts || []).filter(a => a.classification === 'HIGH_RISK').length;
-  const watchCount = (activeAccounts || []).filter(a => a.classification === 'WATCH').length;
-  
-  const avgScore = totalMonitored > 0
-    ? ((activeAccounts || []).reduce((acc, a) => acc + a.risk_score, 0) / totalMonitored).toFixed(3)
-    : 0.0;
-
-  // Filter and sort accounts
-  const filteredAccounts = (activeAccounts || [])
-    .filter((acc) => {
-      const matchesSearch = acc.account_id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesClass = filterClass === 'ALL' || acc.classification === filterClass;
-      return matchesSearch && matchesClass;
+  /* Account list derived from nodes prop */
+  const accounts = nodes
+    .filter(n => {
+      if (filter !== 'ALL' && n.classification !== filter) return false;
+      if (search && !n.id.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
     })
     .sort((a, b) => {
-      if (sortBy === 'SCORE_DESC') return b.risk_score - a.risk_score;
-      if (sortBy === 'SCORE_ASC') return a.risk_score - b.risk_score;
-      if (sortBy === 'ID_ASC') return a.account_id.localeCompare(b.account_id);
-      return 0;
+      if (sort === 'SCORE_DESC') return (b.risk_score || 0) - (a.risk_score || 0);
+      if (sort === 'SCORE_ASC')  return (a.risk_score || 0) - (b.risk_score || 0);
+      return a.id.localeCompare(b.id);
     });
 
-  // Render individual explainability bars
-  const renderExplainabilityBars = (topFeatures, classification) => {
-    return (
-      <div className="features-chart">
-        {topFeatures && topFeatures.length > 0 ? (
-          topFeatures.map((feat) => {
-            let barColorClass = 'bar-blue';
-            if (feat.contribution >= 0.20) barColorClass = 'bar-red';
-            else if (feat.contribution >= 0.10) barColorClass = 'bar-amber';
-
-            return (
-              <div key={feat.feature} className="feature-bar-row">
-                <div className="feature-meta">
-                  <span className="feature-name">{getFeatureDisplayName(feat.feature)}</span>
-                  <span className="feature-contribution">+{feat.contribution.toFixed(3)}</span>
-                </div>
-                <div className="bar-container">
-                  <div
-                    className={`bar-fill ${barColorClass}`}
-                    style={{ width: `${Math.max(feat.contribution * 100, 3)}%` }}
-                  ></div>
-                </div>
-                <p className="feature-desc">{getFeatureDescription(feat.feature)}</p>
-              </div>
-            );
-          })
-        ) : (
-          <div className="no-features">No significant feature contributions.</div>
-        )}
+  /* ─── Selected node inspector ─────────────────────────────────── */
+  if (selectedNodeId) {
+    if (loading) return (
+      <div className="explain-panel loading fade-in">
+        <div style={{ width:24, height:24, border:'2px solid var(--cyan)', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>Fetching ML data…</div>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
-  };
 
-  // --- RENDER SELECTED NODE INSPECTION ---
-  if (isSelectedNodeMode && selectedNodeId) {
-    if (loading) {
-      return (
-        <div className="h-full glass-panel p-4 flex flex-col items-center justify-center text-xs text-slate-400 bg-[#080c14] border border-slate-800">
-          <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mb-2"></div>
-          <p>Fetching ML Explainability metrics...</p>
-        </div>
-      );
-    }
+    if (!explanation) return (
+      <div className="explain-panel loading">
+        <div style={{ fontSize:12, color:'var(--text-muted)' }}>No data for {selectedNodeId}</div>
+      </div>
+    );
 
-    if (!explanation) return null;
-
+    const classLo = (explanation.classification || 'CLEAN').toLowerCase().replace('_','');
     return (
-      <div className="tracenet-selected-inspector bg-[#080c14] border border-slate-850 h-full overflow-y-auto p-4 text-xs">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-semibold">Mule Risk Inspector</span>
-            <h2 className="font-mono text-base font-extrabold text-white margin-0" style={{ margin: 0 }}>{explanation.account_id}</h2>
-          </div>
-          <span className={`risk-badge badge-${explanation.classification.toLowerCase()}`}>
-            {explanation.classification.replace('_', ' ')}
-          </span>
-        </div>
-
-        {/* Risk Score Meter */}
-        <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 mb-4">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-[11px] font-semibold text-slate-300">Anomaly Risk Score</span>
-            <span className={`font-mono font-extrabold text-sm color-${explanation.classification.toLowerCase()}`}>
-              {(explanation.risk_score * 100).toFixed(1)}%
+      <div className="explain-panel fade-in">
+        {/* Header */}
+        <div className="explain-header">
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <div className="explain-id">{explanation.account_id}</div>
+              <div className="explain-sub">{explanation.bank_id}</div>
+            </div>
+            <span className={`risk-class ${classLo}`} style={{ alignSelf:'center' }}>
+              {(explanation.classification || 'CLEAN').replace('_',' ')}
             </span>
           </div>
-          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-500 ${
-                explanation.risk_score >= 0.75 ? 'bg-gradient-to-r from-rose-500 to-red-600' :
-                explanation.risk_score >= 0.45 ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
-                'bg-gradient-to-r from-emerald-500 to-cyan-500'
-              }`}
-              style={{ width: `${explanation.risk_score * 100}%` }}
-            />
+
+          {/* Score meter */}
+          <div className="score-meter" style={{ marginTop:12 }}>
+            <div className="score-row">
+              <span className="score-label">Anomaly Risk Score</span>
+              <span className="score-val" style={{ color: scoreColor(explanation.risk_score) }}>
+                {Math.round((explanation.risk_score || 0) * 100)}%
+              </span>
+            </div>
+            <div className="score-track">
+              <div
+                className="score-fill"
+                style={{
+                  width:`${(explanation.risk_score || 0) * 100}%`,
+                  background: scoreGradient(explanation.risk_score),
+                }}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="explanation-summary mb-3">
-          <strong>Explainability Stack Audit:</strong>
-          {explanation.classification === 'HIGH_RISK' && (
-            <p>This account triggers severe proactive warning flags. Immediate interdiction is highly recommended based on the behavioral stack signature below.</p>
-          )}
-          {explanation.classification === 'WATCH' && (
-            <p>This account shows suspicious activity patterns that deviate significantly from the baseline population. Placed on watchlist monitoring.</p>
-          )}
-          {explanation.classification === 'CLEAN' && (
-            <p>Behavioral signals align with normal consumer patterns. No anomalies detected.</p>
-          )}
-        </div>
+        {/* Explainability */}
+        <div className="feat-title" style={{ marginTop:4 }}>ML Feature Contributions</div>
+        {(explanation.features || []).map(({ key, val }) => (
+          <div key={key} className="feat-row">
+            <div className="feat-meta">
+              <span className="feat-name">{FEAT_LABELS[key] || key}</span>
+              <span className="feat-val" style={{ color: val >= 0.2 ? 'var(--red)' : val >= 0.1 ? 'var(--amber)' : 'var(--cyan)' }}>
+                +{val.toFixed(3)}
+              </span>
+            </div>
+            <div className="feat-track">
+              <div
+                className="feat-fill"
+                style={{
+                  width:`${Math.min(val * 280, 100)}%`,
+                  background: val >= 0.2 ? 'var(--red)' : val >= 0.1 ? 'var(--amber)' : 'var(--cyan)',
+                }}
+              />
+            </div>
+            <div style={{ fontSize:9, color:'var(--text-muted)', lineHeight:1.4 }}>{FEAT_DESC[key]}</div>
+          </div>
+        ))}
 
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-          ML Feature Weight Contribution
-        </p>
-        {renderExplainabilityBars(explanation.top_features, explanation.classification)}
+        {/* Freeze status */}
+        {explanation.freeze_status === 'frozen' && (
+          <div style={{
+            background:'var(--red-lo)', border:'1px solid rgba(239,68,68,0.2)',
+            borderRadius:7, padding:'8px 12px', marginTop:4,
+            fontSize:11, color:'var(--red)', fontWeight:600,
+          }}>
+            ⚠ Account is currently FROZEN via tag propagation
+          </div>
+        )}
       </div>
     );
   }
 
-  // --- RENDER LISTS VIEW (STANDALONE OR NO NODE SELECTED) ---
+  /* ─── Account list ────────────────────────────────────────────── */
   return (
-    <div className={`tracenet-risk-container ${isSelectedNodeMode ? 'in-sidebar' : ''}`}>
-      {/* Header Section */}
-      <header className="tracenet-header">
-        <div className="logo-section">
-          <div className="pulse-dot green"></div>
-          <h1>TraceNet Anomaly Engine</h1>
-        </div>
-        <p className="subtitle">Real-Time Proactive Mule Risk Monitoring</p>
-      </header>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
+      {/* Filter controls */}
+      <div style={{ padding:'8px', borderBottom:'1px solid var(--border)', display:'flex', gap:6 }}>
+        <input
+          style={{
+            flex:1, background:'var(--bg-surface)', border:'1px solid var(--border)',
+            borderRadius:6, padding:'5px 8px', fontSize:11, color:'var(--text-primary)',
+            outline:'none', fontFamily:'inherit',
+          }}
+          placeholder="Search account ID..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select
+          value={sort} onChange={e => setSort(e.target.value)}
+          style={{
+            background:'var(--bg-surface)', border:'1px solid var(--border)',
+            borderRadius:6, padding:'5px 8px', fontSize:10, color:'var(--text-secondary)',
+            outline:'none', cursor:'pointer',
+          }}
+        >
+          <option value="SCORE_DESC">High → Low</option>
+          <option value="SCORE_ASC">Low → High</option>
+          <option value="ID_ASC">A → Z</option>
+        </select>
+      </div>
 
-      {/* Stats Dashboard Grid (Only show if not in sidebar) */}
-      {!isSelectedNodeMode && (
-        <section className="stats-dashboard">
-          <div className="stat-card glassmorphic">
-            <span className="stat-label">Monitored Accounts</span>
-            <span className="stat-val text-glow-blue">{totalMonitored}</span>
-          </div>
-          <div className="stat-card glassmorphic border-glow-red">
-            <span className="stat-label text-red">High Risk Flagged</span>
-            <span className="stat-val text-glow-red pulse-text">{highRiskCount}</span>
-          </div>
-          <div className="stat-card glassmorphic border-glow-amber">
-            <span className="stat-label text-amber">Under Watch</span>
-            <span className="stat-val text-glow-amber">{watchCount}</span>
-          </div>
-          <div className="stat-card glassmorphic">
-            <span className="stat-label">Average Risk Score</span>
-            <span className="stat-val text-glow-green">{avgScore}</span>
-          </div>
-        </section>
-      )}
+      {/* Filter tabs */}
+      <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--border)' }}>
+        {['ALL','HIGH_RISK','WATCH','CLEAN'].map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            style={{
+              flex:1, padding:'6px 4px', fontSize:9, fontWeight:700,
+              textTransform:'uppercase', letterSpacing:0.5,
+              background: filter === f ? 'var(--bg-elevated)' : 'transparent',
+              border:'none', borderBottom: filter === f ? '2px solid var(--cyan)' : '2px solid transparent',
+              color: filter === f ? 'var(--text-primary)' : 'var(--text-muted)',
+              cursor:'pointer', transition:'all 0.15s',
+            }}
+          >{f === 'HIGH_RISK' ? 'HIGH' : f}</button>
+        ))}
+      </div>
 
-      {/* Filter and Control Bar */}
-      <section className="controls-bar glassmorphic">
-        <div className="search-wrapper">
-          <input
-            type="text"
-            placeholder="Search Account ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
-
-        <div className="filter-group">
-          <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} className="select-input">
-            <option value="ALL">All Categories</option>
-            <option value="HIGH_RISK">High Risk</option>
-            <option value="WATCH">Watchlist</option>
-            <option value="CLEAN">Clean</option>
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="select-input">
-            <option value="SCORE_DESC">Score: High-Low</option>
-            <option value="SCORE_ASC">Score: Low-High</option>
-          </select>
-        </div>
-      </section>
-
-      {/* Main List Section */}
-      <section className="accounts-list">
-        {filteredAccounts.length === 0 ? (
-          <div className="empty-state glassmorphic">
-            <p>No risk accounts detected.</p>
+      <div className="risk-list">
+        {accounts.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">◎</div>
+            <div className="empty-title">No accounts found</div>
           </div>
         ) : (
-          filteredAccounts.map(acc => {
-            const isExpanded = expandedAccount === acc.account_id;
-            const badgeClass = `risk-badge badge-${acc.classification.toLowerCase()}`;
-            const cardClass = `account-card glassmorphic border-glow-${acc.classification.toLowerCase()} ${isExpanded ? 'active-card' : ''}`;
-            
+          accounts.map(n => {
+            const cls = (n.classification || 'CLEAN').toLowerCase().replace('_','');
+            const sc  = Math.round((n.risk_score || 0) * 100);
+            const col = n.classification === 'HIGH_RISK' ? 'var(--red)'
+                      : n.classification === 'WATCH'     ? 'var(--amber)' : 'var(--cyan)';
             return (
-              <div 
-                key={acc.account_id} 
-                className={cardClass} 
-                onClick={() => {
-                  if (isSelectedNodeMode) {
-                    fetchLocalExplanation(acc.account_id);
-                  } else {
-                    setExpandedAccount(isExpanded ? null : acc.account_id);
-                  }
-                }}
+              <div
+                key={n.id}
+                className={`risk-row ${cls} ${selectedNodeId === n.id ? 'selected' : ''}`}
+                onClick={() => {}}
               >
-                <div className="card-header">
-                  <div className="account-info">
-                    <span className="account-id">{acc.account_id}</span>
-                    <span className={badgeClass}>{acc.classification.replace('_', ' ')}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div className="risk-id" style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {n.id}
                   </div>
-                  
-                  <div className="score-area">
-                    <span className={`score-value color-${acc.classification.toLowerCase()}`}>
-                      {(acc.risk_score * 100).toFixed(0)}%
-                    </span>
+                  <div style={{ fontSize:9, color:'var(--text-muted)', marginTop:1 }}>
+                    {n.bank_id || '—'}
                   </div>
                 </div>
-
-                {/* Expandable Explainability Panel */}
-                {isExpanded && (
-                  <div className="explainability-panel" onClick={(e) => e.stopPropagation()}>
-                    <div className="divider"></div>
-                    <div className="explanation-summary">
-                      <strong>Explainability Stack Audit:</strong>
-                      {acc.classification === 'HIGH_RISK' && (
-                        <p>This account triggers severe proactive warning flags. Immediate interdiction is highly recommended based on the behavioral stack signature below.</p>
-                      )}
-                      {acc.classification === 'WATCH' && (
-                        <p>This account shows suspicious activity patterns that deviate significantly from the baseline population. Placed on watchlist monitoring.</p>
-                      )}
-                      {acc.classification === 'CLEAN' && (
-                        <p>Behavioral signals align with normal consumer patterns. No anomalies detected.</p>
-                      )}
-                    </div>
-                    {renderExplainabilityBars(acc.top_features, acc.classification)}
-                  </div>
-                )}
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
+                  <div className="risk-score" style={{ color: col }}>{sc}%</div>
+                  <span className={`risk-class ${cls}`}>{(n.classification || 'CLEAN').replace('_',' ')}</span>
+                </div>
               </div>
             );
           })
         )}
-      </section>
+      </div>
     </div>
   );
-};
-
-export default RiskPanel;
+}
