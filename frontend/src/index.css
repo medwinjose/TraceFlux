@@ -68,8 +68,8 @@ html, body, #root {
 /* ─── Scrollbar ──────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.4); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.7); }
+::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 99px; backdrop-filter: blur(4px); }
+::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.6); }
 
 /* ─── Layout ─────────────────────────────────────────────────────────── */
 .app-shell {
@@ -173,6 +173,12 @@ html, body, #root {
   margin-left: auto; font-size: 10px; font-weight: 700;
   background: var(--red-lo); color: var(--red); border: 1px solid rgba(139,30,21,0.2);
   padding: 2px 6px; border-radius: 99px; font-family: 'JetBrains Mono', monospace;
+  animation: heartbeat 2s infinite cubic-bezier(0.28, 0.84, 0.42, 1);
+}
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  10% { transform: scale(1.15); }
+  20% { transform: scale(1); }
 }
 
 .sidebar-footer {
@@ -360,8 +366,9 @@ html, body, #root {
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column; gap: 6px;
   position: relative; overflow: hidden;
-  transition: background 0.2s;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   animation: slide-in-up 0.5s ease-out backwards;
+  background: transparent;
 }
 .stat-card:nth-child(1) { animation-delay: 0.1s; }
 .stat-card:nth-child(2) { animation-delay: 0.2s; }
@@ -369,7 +376,13 @@ html, body, #root {
 .stat-card:nth-child(4) { animation-delay: 0.4s; }
 
 .stat-card:last-child { border-right: none; }
-.stat-card:hover { background: var(--bg-elevated); }
+.stat-card:hover { 
+  background: rgba(255, 255, 255, 0.4); 
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+  z-index: 10;
+}
 .stat-card:hover .stat-number {
   transform: scale(1.05);
 }
@@ -440,12 +453,15 @@ html, body, #root {
 .graph-controls { display: flex; align-items: center; gap: 6px; }
 .graph-btn {
   width: 28px; height: 28px; border-radius: 6px;
-  background: var(--bg-surface); border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.3); border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: var(--text-secondary); font-size: 13px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.15s; font-family: monospace;
+  cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); font-family: monospace;
 }
-.graph-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-md); }
+.graph-btn:hover { background: rgba(255, 255, 255, 0.8); color: var(--text-primary); border-color: var(--border-md); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+.graph-btn:active { transform: scale(0.92); }
 
 .graph-legend {
   display: flex; align-items: center; gap: 14px; margin-left: auto;
@@ -644,13 +660,20 @@ canvas.graph-canvas:active { cursor: grabbing; }
 
 .canvas-node-tooltip {
   position: absolute;
-  background: var(--bg-elevated);
+  background: rgba(247, 246, 242, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-hi);
   border-radius: 8px; padding: 8px 12px;
   font-size: 11px; pointer-events: none;
   z-index: 10;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   min-width: 140px;
+  animation: tooltip-fade 0.2s ease-out;
+}
+@keyframes tooltip-fade {
+  from { opacity: 0; transform: scale(0.95) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .tooltip-id   { font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 .tooltip-bank { font-size: 10px; color: var(--text-muted); }
@@ -854,12 +877,23 @@ input[type="range"]:focus { outline: none; }
 }
 .ev-connector-line {
   width: 2px; flex: 1; min-height: 24px;
-  background: linear-gradient(to bottom, var(--border-md), var(--border));
+  background: linear-gradient(to bottom, var(--border-md), transparent 50%, var(--border-md));
+  background-size: 100% 200%;
+  animation: flow-line 2s linear infinite;
+}
+@keyframes flow-line {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
 }
 .ev-connector-dot {
   width: 10px; height: 10px; border-radius: 50%;
   background: var(--bg-surface); border: 2px solid var(--border-hi);
   flex-shrink: 0; margin: 4px 0;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0.1); }
+  50% { box-shadow: 0 0 0 4px rgba(0,0,0,0); }
 }
 
 .ev-card {
