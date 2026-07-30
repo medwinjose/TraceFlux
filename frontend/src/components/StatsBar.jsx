@@ -1,51 +1,75 @@
 import React from 'react';
 
 export default function StatsBar({ nodes = [], alerts = [] }) {
-  const totalAccounts = nodes.length;
-  const frozenAccounts = nodes.filter(n => n.freeze_status === 'frozen').length;
-  const watchAccounts = nodes.filter(n => n.classification === 'WATCH').length;
-  const highRiskAccounts = nodes.filter(n => n.classification === 'HIGH_RISK').length;
+  const total   = nodes.length;
+  const frozen  = nodes.filter(n => n.freeze_status === 'frozen').length;
+  const watch   = nodes.filter(n => n.classification === 'WATCH').length;
+  const hiRisk  = nodes.filter(n => n.classification === 'HIGH_RISK').length;
+  const flagged = frozen + hiRisk;
+  const alertCt = alerts.length;
+
+  const frozenPct = total ? (frozen / total) * 100 : 0;
+  const watchPct  = total ? ((watch + hiRisk) / total) * 100 : 0;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 py-4 bg-[#090D16] border-b border-slate-800">
-      <div className="glass-card p-3 rounded-xl flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Monitored Accounts</p>
-          <p className="text-xl font-extrabold text-white font-mono mt-0.5">{totalAccounts}</p>
+    <div className="stats-row">
+      {/* Card 1 – Monitored */}
+      <div className="stat-card">
+        <div className="stat-label">Monitored Accounts</div>
+        <div className="stat-number cyan">{total}</div>
+        <div className="stat-meta">
+          <span className="stat-badge cyan">4 Banks Active</span>
+          <span>+1.2%</span>
         </div>
-        <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 font-mono text-xs">
-          4 Banks
-        </div>
+        <div className="stat-progress" style={{ width: '100%', background: 'rgba(6,182,212,0.15)' }} />
       </div>
 
-      <div className="glass-card p-3 rounded-xl flex items-center justify-between border-l-4 border-l-rose-500">
-        <div>
-          <p className="text-[11px] font-semibold text-rose-400 uppercase tracking-wider">Auto-Frozen (Interdicted)</p>
-          <p className="text-xl font-extrabold text-rose-400 font-mono mt-0.5">{frozenAccounts}</p>
+      {/* Card 2 – Frozen */}
+      <div className="stat-card">
+        <div className="stat-label">Auto-Frozen (Interdicted)</div>
+        <div className={`stat-number ${frozen > 0 ? 'red' : ''}`}>{frozen.toString().padStart(2,'0')}</div>
+        <div className="stat-meta">
+          <span className={`stat-badge ${frozen > 0 ? 'red' : 'cyan'}`}>
+            {frozen > 0 ? 'Active Interdiction' : 'Standby'}
+          </span>
         </div>
-        <div className="px-2 py-1 rounded bg-rose-500/20 text-rose-300 font-mono text-[10px] font-bold">
-          {frozenAccounts > 0 ? 'ACTIVE INTERDICTION' : 'STANDBY'}
-        </div>
+        <div
+          className="stat-progress"
+          style={{ width: `${frozenPct}%`, background: 'var(--red)' }}
+        />
       </div>
 
-      <div className="glass-card p-3 rounded-xl flex items-center justify-between border-l-4 border-l-amber-500">
-        <div>
-          <p className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">Watchlist (Proactive ML)</p>
-          <p className="text-xl font-extrabold text-amber-400 font-mono mt-0.5">{watchAccounts + highRiskAccounts}</p>
+      {/* Card 3 – Watchlist */}
+      <div className="stat-card">
+        <div className="stat-label">Watchlist (Proactive ML)</div>
+        <div className={`stat-number ${flagged > 0 ? 'amber' : ''}`}>{(watch + hiRisk).toString().padStart(2,'0')}</div>
+        <div className="stat-meta">
+          <span className={`stat-badge ${hiRisk > 0 ? 'red' : 'amber'}`}>
+            {hiRisk > 0 ? `${hiRisk} High Risk` : 'Flagged Nodes'}
+          </span>
         </div>
-        <div className="text-xs text-slate-400 font-mono">
-          {highRiskAccounts} High Risk
-        </div>
+        <div
+          className="stat-progress"
+          style={{ width: `${watchPct}%`, background: 'var(--amber)' }}
+        />
       </div>
 
-      <div className="glass-card p-3 rounded-xl flex items-center justify-between border-l-4 border-l-emerald-500">
-        <div>
-          <p className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Alerts Dispatched</p>
-          <p className="text-xl font-extrabold text-emerald-400 font-mono mt-0.5">{alerts.length}</p>
+      {/* Card 4 – Alerts */}
+      <div className="stat-card">
+        <div className="stat-label">Alerts Dispatched</div>
+        <div className={`stat-number ${alertCt > 0 ? 'red' : ''}`}>{alertCt.toString().padStart(2,'0')}</div>
+        <div className="stat-meta">
+          <span className="stat-badge green">WebSocket Live</span>
+          <span>Real-time</span>
         </div>
-        <div className="text-[11px] text-slate-400 font-mono">
-          WebSocket Live
-        </div>
+        <div
+          className="stat-progress"
+          style={{
+            width: alertCt > 0 ? '100%' : '0%',
+            background: 'var(--red)',
+            transition: 'width 1s ease',
+          }}
+        />
       </div>
     </div>
   );

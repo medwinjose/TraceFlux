@@ -1,172 +1,197 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Header from './components/Header';
-import StatsBar from './components/StatsBar';
-import NetworkGraph from './components/NetworkGraph';
-import AlertFeed from './components/AlertFeed';
-import RiskPanel from './components/RiskPanel';
+import Sidebar       from './components/Sidebar';
+import Header        from './components/Header';
+import StatsBar      from './components/StatsBar';
+import NetworkGraph  from './components/NetworkGraph';
+import RiskPanel     from './components/RiskPanel';
+import AlertFeed     from './components/AlertFeed';
+import WatchlistView from './components/WatchlistView';
+import AssetsView    from './components/AssetsView';
+import SettingsView  from './components/SettingsView';
+import SupportView   from './components/SupportView';
 
 export default function App() {
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
-  const [alerts, setAlerts] = useState([]);
-  const [activeTracePath, setActiveTracePath] = useState([]);
-  const [selectedNodeId, setSelectedNodeId] = useState(null);
-  const [wsConnected, setWsConnected] = useState(false);
-  const [isReporting, setIsReporting] = useState(false);
-
+  const [nodes,          setNodes]          = useState([]);
+  const [edges,          setEdges]          = useState([]);
+  const [alerts,         setAlerts]         = useState([]);
+  const [activeTrace,    setActiveTrace]    = useState([]);
+  const [selectedNode,   setSelectedNode]   = useState(null);
+  const [wsConnected,    setWsConnected]    = useState(false);
+  const [isReporting,    setIsReporting]    = useState(false);
+  const [activeView,     setActiveView]     = useState('network');
+  const [searchQuery,    setSearchQuery]    = useState('');
+  const [isSweeping,     setIsSweeping]     = useState(false);
   const wsRef = useRef(null);
 
-  // Load Graph Network & Accounts Data from FastAPI Backend
-  const fetchGraphData = async () => {
+  /* ── Fetch graph + alerts from backend ──────────────────────────── */
+  const fetchAll = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/graph_data');
-      if (!res.ok) return;
-      const data = await res.json();
-      setNodes(data.nodes || []);
-      setEdges(data.edges || []);
-
-      const alertsRes = await fetch('http://127.0.0.1:8000/alerts');
-      if (alertsRes.ok) {
-        const alertsData = await alertsRes.json();
-        setAlerts(alertsData);
-      }
+      const [gd, al] = await Promise.all([
+        fetch('/api/graph_data').then(r => r.json()),
+        fetch('/api/alerts').then(r => r.json()),
+      ]);
+      setNodes(gd.nodes  || []);
+      setEdges(gd.edges  || []);
+      setAlerts(al || []);
     } catch (err) {
-      console.error("Backend offline or connection error:", err);
+      console.warn('Backend fetch failed:', err);
     }
   };
 
+  /* ── WebSocket via Vite proxy (/ws → ws://127.0.0.1:8000/ws) ──── */
   useEffect(() => {
-    fetchGraphData();
+    fetchAll();
 
-    // Setup WebSocket Connection to Backend Real-Time Switch
-    const connectWS = () => {
-      const socket = new WebSocket('ws://127.0.0.1:8000/ws');
+    const connect = () => {
+      // Use relative path so it goes through the Vite WS proxy
+      const ws = new WebSocket(`ws://${location.host}/ws`);
 
-      socket.onopen = () => {
+      ws.onopen = () => {
         setWsConnected(true);
-        console.log("Connected to TraceNet WebSocket Switch Layer");
+        console.log('[TraceNet] WS connected');
       };
 
-      socket.onmessage = (event) => {
+      ws.onmessage = ({ data }) => {
         try {
-          const payload = JSON.parse(event.data);
-          const { event: evtType, data } = payload;
-
-          if (evtType === 'TAG_PROPAGATED') {
-            // Live node animation step
-            const { account_id, traced_path } = data;
-            setActiveTracePath(traced_path || []);
-
-            setNodes((prevNodes) =>
-              prevNodes.map((node) =>
-                node.id === account_id
-                  ? { ...node, freeze_status: 'frozen', is_flagged: true }
-                  : node
+          const { event: evt, data: payload } = JSON.parse(data);
+          if (evt === 'TAG_PROPAGATED') {
+            const { account_id, traced_path, bank_id, hop } = payload;
+            setActiveTrace(traced_path || []);
+            setNodes(prev =>
+              prev.map(n =>
+                n.id === account_id
+                  ? { ...n, freeze_status: 'frozen', is_flagged: true }
+                  : n
               )
             );
-
-            // Append live alert if new
-            setAlerts((prev) => [
-              {
-                alert_id: `ALT-LIVE-${Date.now()}`,
-                account_id: account_id,
-                bank_id: data.bank_id,
-                reason: 'PROPAGATED_TAG',
-                timestamp: Date.now() / 1000,
-                traced_path: traced_path,
-                message: `AUTOFREEZE: Account ${account_id} locked via Tag Propagation [Hop ${data.hop}]`,
-              },
-              ...prev,
-            ]);
-          } else if (evtType === 'DEMO_RESET') {
-            setActiveTracePath([]);
-            setSelectedNodeId(null);
-            fetchGraphData();
+            setAlerts(prev => [{
+              alert_id:    `ALT-LIVE-${Date.now()}`,
+              account_id,
+              bank_id,
+              reason:      'PROPAGATED_TAG',
+              timestamp:   Date.now() / 1000,
+              traced_path,
+              message:     `AUTOFREEZE: Account ${account_id} @ ${bank_id} locked via Tag Propagation [Hop ${hop}]`,
+            }, ...prev]);
+          } else if (evt === 'DEMO_RESET') {
+            setActiveTrace([]);
+            setSelectedNode(null);
+            fetchAll();
           }
-        } catch (e) {
-          console.error("Error parsing WS message:", e);
-        }
+        } catch (e) { /* ignore malformed */ }
       };
 
-      socket.onclose = () => {
+      ws.onclose = () => {
         setWsConnected(false);
-        // Reconnect attempt after 3s
-        setTimeout(connectWS, 3000);
+        setTimeout(connect, 3000);
       };
 
-      wsRef.current = socket;
+      wsRef.current = ws;
     };
 
-    connectWS();
-
-    return () => {
-      if (wsRef.current) wsRef.current.close();
-    };
+    connect();
+    return () => wsRef.current?.close();
   }, []);
 
-  // Action: Trigger Fraud Report
+  /* ── Actions ────────────────────────────────────────────────────── */
   const handleReportFraud = async (account_id = 'VICTIM') => {
     setIsReporting(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/report_fraud/${account_id}`, {
-        method: 'POST',
-      });
+      const res  = await fetch(`/api/report_fraud/${account_id}`, { method: 'POST' });
       const data = await res.json();
-      console.log("Fraud report triggered:", data);
-      if (data.frozen_chain) {
-        setActiveTracePath(data.frozen_chain);
-      }
-    } catch (err) {
-      console.error("Failed to trigger fraud report:", err);
-    } finally {
-      setIsReporting(false);
-    }
+      if (data.frozen_chain) setActiveTrace(data.frozen_chain);
+    } catch (err) { console.error('Fraud report error:', err); }
+    finally { setIsReporting(false); }
   };
 
-  // Action: Reset Demo
-  const handleResetDemo = async () => {
+  const handleReset = async () => {
     try {
-      await fetch('http://127.0.0.1:8000/reset', { method: 'POST' });
-      setActiveTracePath([]);
+      await fetch('/api/reset', { method: 'POST' });
+      setActiveTrace([]);
       setAlerts([]);
-      setSelectedNodeId(null);
-      fetchGraphData();
-    } catch (err) {
-      console.error("Failed to reset demo:", err);
-    }
+      setSelectedNode(null);
+      fetchAll();
+    } catch (err) { console.error('Reset error:', err); }
   };
 
+  const handleSweep = () => {
+    setIsSweeping(true);
+    // Ping backend to re-fetch or clear cache if desired, but visually just sweep
+    setTimeout(() => {
+      setIsSweeping(false);
+      fetchAll();
+    }, 2500);
+  };
+
+  /* ── Filter nodes by search ─────────────────────────────────────── */
+  const visibleNodes = searchQuery
+    ? nodes.filter(n => n.id.toLowerCase().includes(searchQuery.toLowerCase()))
+    : nodes;
+
+  /* ── Render ─────────────────────────────────────────────────────── */
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#06090E] text-slate-100 overflow-hidden">
-      <Header
-        wsConnected={wsConnected}
-        onReportFraud={handleReportFraud}
-        onReset={handleResetDemo}
-        isReporting={isReporting}
+    <div className="app-shell">
+      <Sidebar
+        activeView={activeView}
+        onViewChange={setActiveView}
+        alertCount={alerts.length}
+        onSweep={handleSweep}
       />
 
-      <StatsBar nodes={nodes} alerts={alerts} />
+      <div className="main-area">
+        <Header
+          wsConnected={wsConnected}
+          onReportFraud={handleReportFraud}
+          onReset={handleReset}
+          isReporting={isReporting}
+          onSearch={setSearchQuery}
+        />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left / Center Graph Area */}
-        <div className="flex-1 relative h-full flex flex-col">
-          <NetworkGraph
-            nodes={nodes}
-            edges={edges}
-            activeTracePath={activeTracePath}
-            selectedNode={selectedNodeId}
-            onSelectNode={setSelectedNodeId}
-          />
-        </div>
+        <StatsBar nodes={nodes} alerts={alerts} />
 
-        {/* Right Inspection & Alert Drawer */}
-        <div className="w-96 border-l border-slate-800 flex flex-col h-full bg-[#080C14]">
-          <div className="h-1/2 border-b border-slate-800">
-            <RiskPanel selectedNodeId={selectedNodeId} nodes={nodes} />
-          </div>
-          <div className="h-1/2">
-            <AlertFeed alerts={alerts} />
-          </div>
+        <div className="content-grid">
+          {activeView === 'network' && (
+            <>
+              {/* Network graph takes remaining space */}
+              <NetworkGraph
+                nodes={visibleNodes}
+                edges={edges}
+                activeTracePath={activeTrace}
+                selectedNode={selectedNode}
+                onSelectNode={setSelectedNode}
+                isSweeping={isSweeping}
+              />
+
+              {/* Right panel */}
+              <div className="right-panel">
+                <div className="risk-section">
+                  <div className="panel-header">
+                    <span className="panel-title">Recent Account Risk</span>
+                    <span className="panel-count">{nodes.length} accounts</span>
+                  </div>
+                  <RiskPanel
+                    selectedNodeId={selectedNode}
+                    nodes={nodes.map(n => ({ ...n, id: n.id }))}
+                  />
+                </div>
+                <AlertFeed alerts={alerts} />
+              </div>
+            </>
+          )}
+
+          {activeView === 'watch' && <WatchlistView nodes={nodes} />}
+          {activeView === 'assets' && <AssetsView nodes={nodes} />}
+          {activeView === 'settings' && <SettingsView />}
+          {activeView === 'support' && <SupportView />}
+          {activeView === 'alerts' && (
+            <div style={{ flex: 1, padding: 24, background: 'var(--bg-void)', overflowY: 'auto' }}>
+              <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 24 }}>
+                <h2 style={{ fontSize: 18, color: 'var(--text-primary)', letterSpacing: 2, textTransform: 'uppercase' }}>Interdiction Log</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Full history of system auto-freezes and tag propagations.</p>
+              </div>
+              <AlertFeed alerts={alerts} />
+            </div>
+          )}
         </div>
       </div>
     </div>
