@@ -1,13 +1,14 @@
 import React from 'react';
 
 const NAV_ITEMS = [
-  { icon: '◈', label: 'Network Map',  id: 'network', badge: null },
-  { icon: '⚠', label: 'Alerts',        id: 'alerts',  badge: null },
-  { icon: '◻', label: 'Assets',        id: 'assets',  badge: null },
-  { icon: '◉', label: 'Watchlist',     id: 'watch',   badge: null },
+  { icon: '◈', label: 'Network Map',    id: 'network',  badge: null },
+  { icon: '⚠', label: 'Alerts',         id: 'alerts',   badge: null },
+  { icon: '🔗', label: 'Evidence Chain', id: 'evidence', badge: null },
+  { icon: '◻', label: 'Assets',         id: 'assets',   badge: null },
+  { icon: '◉', label: 'Watchlist',      id: 'watch',    badge: null },
 ];
 
-export default function Sidebar({ activeView, onViewChange, alertCount, onSweep }) {
+export default function Sidebar({ activeView, onViewChange, alertCount }) {
   return (
     <aside className="sidebar">
       {/* Logo */}

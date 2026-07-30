@@ -40,7 +40,7 @@ Team-Nova-Medwin/
 │   ├── graph_engine.py            # TransactionGraph BFS tag propagation engine
 │   ├── dispatcher.py              # FreezeAlert dispatcher
 │   ├── main.py                    # FastAPI server & WebSocket hub
-│   ├── simulate.py                # Synthetic data generator (40 accounts + fraud chain)
+│   ├── simulate.py                # Synthetic data generator (40 normal + 9-node fraud chain)
 │   ├── run_demo.py                # One-click launcher script
 │   ├── test_system.py             # System verification test suite
 │   ├── validation.py              # ML scoring validation script
@@ -51,16 +51,23 @@ Team-Nova-Medwin/
     ├── index.html
     ├── package.json
     ├── vite.config.js
+    ├── tailwind.config.js
+    ├── postcss.config.cjs
     └── src/
-        ├── App.jsx                # Main application component & WS listener
-        ├── index.css
+        ├── App.jsx                # Root state, WebSocket lifecycle, view router
+        ├── index.css              # Design tokens (colors, fonts, spacing) & all component styles
         ├── main.jsx
         └── components/
-            ├── AlertFeed.jsx       # WebSocket live alert stream
-            ├── Header.jsx          # Switch simulation header & control bar
+            ├── Sidebar.jsx         # Left nav — view switching, alert badge, user chip
+            ├── Header.jsx          # Topbar — search, WS status, fraud-trigger & reset buttons
+            ├── StatsBar.jsx        # 4-card KPI row (monitored, frozen, watch, alerts)
             ├── NetworkGraph.jsx    # Canvas force-directed physics graph
-            ├── RiskPanel.jsx       # Live ML risk inspector & explainability
-            └── StatsBar.jsx        # Real-time interdiction metrics
+            ├── RiskPanel.jsx       # Account list + ML risk inspector & explainability
+            ├── AlertFeed.jsx       # WebSocket live alert stream
+            ├── WatchlistView.jsx   # Bar chart + table of WATCH/HIGH_RISK accounts
+            ├── AssetsView.jsx      # Per-bank institutional exposure grid (waffle chart)
+            ├── SettingsView.jsx    # System parameter display
+            └── SupportView.jsx     # Contact & documentation links
 ```
 
 ---

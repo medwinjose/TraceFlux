@@ -6,10 +6,10 @@ export default function WatchlistView({ nodes }) {
     .sort((a, b) => b.risk_score - a.risk_score);
 
   return (
-    <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', gap: 24, background: 'var(--bg-void)', overflowY: 'auto' }}>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
-        <h2 style={{ fontSize: 18, color: 'var(--text-primary)', letterSpacing: 2, textTransform: 'uppercase' }}>Proactive Watchlist</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Accounts exhibiting pre-fraud structuring and anomalous velocity.</p>
+    <div className="view-container">
+      <div className="view-header">
+        <h2 className="view-title">Proactive Watchlist</h2>
+        <p className="view-subtitle">Accounts exhibiting pre-fraud structuring and anomalous velocity.</p>
       </div>
 
       {/* Risk Score vs. Tx Velocity Visualization */}
@@ -27,7 +27,7 @@ export default function WatchlistView({ nodes }) {
               style={{ 
                 flex: 1, 
                 minWidth: 20,
-                background: 'linear-gradient(180deg, var(--gold-hi), var(--gold-lo))', 
+                background: 'linear-gradient(180deg, var(--amber-hi), var(--amber-lo))', 
                 height: height, 
                 borderRadius: '4px 4px 0 0', 
                 transition: 'height 0.5s ease',
