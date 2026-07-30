@@ -1,4 +1,4 @@
-﻿"""
+"""
 TraceNet - Plain-English Freeze Receipt Generator
 Owner: Systems/Backend
 
@@ -35,8 +35,7 @@ def generate_plain_english_reason(
     if freeze_type == "VICTIM_REPORT":
         return (
             f"Account {account_id} was reported as the origin of a fraudulent transaction. "
-            f"TraceNet has initiated tag propagation across all downstream recipients "
-            f"within the 6-hour transaction window."
+            f"TraceNet has initiated tag propagation across all downstream recipients."
         )
 
     if freeze_type == "TAG_PROPAGATED":
