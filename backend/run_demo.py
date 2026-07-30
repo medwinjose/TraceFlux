@@ -9,7 +9,7 @@ import os
 
 def launch():
     print("=================================================================")
-    print("  ⚡ TRACENET — REAL-TIME FRAUD TRACING & INTERDICTION SYSTEM")
+    print("  TRACENET -- REAL-TIME FRAUD TRACING & INTERDICTION SYSTEM")
     print("=================================================================")
     print("Starting FastAPI Backend Server on http://127.0.0.1:8000 ...")
 
@@ -21,7 +21,7 @@ def launch():
     time.sleep(2)
 
     print("Starting Vite React Dashboard on http://127.0.0.1:5173 ...")
-    frontend_cwd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
+    frontend_cwd = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend"))
     
     frontend = subprocess.Popen(
         ["npx", "vite", "--port", "5173"],
