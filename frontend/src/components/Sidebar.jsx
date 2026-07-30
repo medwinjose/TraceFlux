@@ -50,13 +50,13 @@ export default function Sidebar({ activeView, onViewChange, alertCount }) {
           <span className="nav-icon">⚙</span>
           <span>Settings</span>
         </div>
-        <div 
-          className={`nav-item ${activeView === 'support' ? 'active' : ''}`}
+        <button 
+          className={`nav-item ${activeView === 'support' ? 'active' : ''}`} 
           onClick={() => onViewChange('support')}
         >
-          <span className="nav-icon">?</span>
-          <span>Support</span>
-        </div>
+          <span className="nav-icon">💡</span>
+          <span>FAQ & Docs</span>
+        </button>
       </nav>
 
       {/* Footer controls */}
