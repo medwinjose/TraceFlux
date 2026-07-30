@@ -10,20 +10,14 @@ export default function Header({ wsConnected, onReportFraud, onReset, isReportin
 
   return (
     <header className="topbar">
-      {/* Brand */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 24, height: 24, color: 'var(--text-primary)' }}>
-          <circle cx="12" cy="12" r="10" />
-          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-        </svg>
-        <div>
-          <div className="topbar-title">TraceNet</div>
-          <div className="topbar-subtitle" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
+      {/* Breadcrumb / Useful Info */}
+      <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 1, textTransform: 'uppercase' }}>Central Switch Node</div>
+        <div className="topbar-subtitle" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
           <span className="system-status">
             <span className="status-dot pulse" />
-            System Status: <strong>Nominal</strong>
+            Live Sync: <strong style={{ color: 'var(--text-primary)' }}>Nominal</strong>
           </span>
-        </div>
         </div>
       </div>
 

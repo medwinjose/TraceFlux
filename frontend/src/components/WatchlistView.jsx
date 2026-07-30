@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function WatchlistView({ nodes }) {
+  const [hoveredId, setHoveredId] = useState(null);
+
   const watchNodes = nodes
     .filter(n => n.classification === 'WATCH' || n.classification === 'HIGH_RISK')
     .sort((a, b) => b.risk_score - a.risk_score);
+
+  // Calculate min and max for dynamic scaling so it doesn't look like a straight line
+  const maxScore = watchNodes.length > 0 ? Math.max(...watchNodes.map(n => n.risk_score)) : 1;
+  const minScore = watchNodes.length > 0 ? Math.min(...watchNodes.map(n => n.risk_score)) : 0;
+  const range = Math.max(maxScore - minScore, 0.1); // Avoid division by zero
 
   return (
     <div className="view-container">
@@ -14,26 +21,46 @@ export default function WatchlistView({ nodes }) {
 
       {/* Risk Score vs. Tx Velocity Visualization */}
       <div style={{
-        height: 160, background: 'var(--bg-base)', border: '1px solid var(--border)',
-        borderRadius: 8, padding: '24px 24px 0 24px', display: 'flex', alignItems: 'flex-end', gap: 8,
-        overflowX: 'auto', overflowY: 'hidden'
+        height: 200, background: 'var(--bg-base)', border: '1px solid var(--border)',
+        borderRadius: 8, padding: '24px 24px 0 24px', display: 'flex', alignItems: 'flex-end', gap: 12,
+        overflowX: 'auto', overflowY: 'hidden', position: 'relative'
       }}>
         {watchNodes.map(n => {
-          const height = `${Math.max(5, n.risk_score * 100)}%`;
+          // Dynamically scale height between 20% and 95% based on min/max in dataset
+          const normalized = (n.risk_score - minScore) / range;
+          const height = `${20 + (normalized * 75)}%`;
+          const isHovered = hoveredId === n.id;
+          
           return (
             <div 
               key={n.id} 
+              onMouseEnter={() => setHoveredId(n.id)}
+              onMouseLeave={() => setHoveredId(null)}
               title={`${n.id} - ${Math.round(n.risk_score*100)}%`}
               style={{ 
                 flex: 1, 
-                minWidth: 20,
-                background: 'linear-gradient(180deg, var(--amber-hi), var(--amber-lo))', 
+                minWidth: 40,
+                background: isHovered 
+                  ? 'linear-gradient(180deg, var(--amber), var(--amber-lo))' 
+                  : 'linear-gradient(180deg, var(--amber-hi), var(--amber-lo))', 
                 height: height, 
-                borderRadius: '4px 4px 0 0', 
-                transition: 'height 0.5s ease',
-                cursor: 'pointer'
+                borderRadius: '6px 6px 0 0', 
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                paddingTop: 8,
+                opacity: hoveredId && !isHovered ? 0.5 : 1,
+                transform: isHovered ? 'scaleY(1.02)' : 'none',
+                transformOrigin: 'bottom'
               }} 
-            />
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, color: isHovered ? '#fff' : 'rgba(255,255,255,0.7)' }}>
+                {Math.round(n.risk_score*100)}%
+              </span>
+            </div>
           );
         })}
         {watchNodes.length === 0 && (
@@ -54,19 +81,32 @@ export default function WatchlistView({ nodes }) {
             </tr>
           </thead>
           <tbody>
-            {watchNodes.map(n => (
-              <tr key={n.id} style={{ borderBottom: '1px solid var(--border-md)' }}>
-                <td style={{ padding: '12px 16px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>{n.id}</td>
-                <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{n.bank_id}</td>
-                <td style={{ padding: '12px 16px', color: 'var(--amber)', fontWeight: 700 }}>{Math.round(n.risk_score * 100)}%</td>
-                <td style={{ padding: '12px 16px' }}>
-                  <span style={{ 
-                    padding: '4px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                    background: 'var(--amber-lo)', color: 'var(--amber)', border: '1px solid rgba(217,119,6,0.2)'
-                  }}>FLAGGED</span>
-                </td>
-              </tr>
-            ))}
+            {watchNodes.map(n => {
+              const isHovered = hoveredId === n.id;
+              return (
+                <tr 
+                  key={n.id} 
+                  onMouseEnter={() => setHoveredId(n.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  style={{ 
+                    borderBottom: '1px solid var(--border-md)',
+                    background: isHovered ? 'var(--bg-surface-hover)' : 'transparent',
+                    transition: 'background 0.2s ease',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <td style={{ padding: '12px 16px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>{n.id}</td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{n.bank_id}</td>
+                  <td style={{ padding: '12px 16px', color: 'var(--amber)', fontWeight: 700 }}>{Math.round(n.risk_score * 100)}%</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ 
+                      padding: '4px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                      background: 'var(--amber-lo)', color: 'var(--amber)', border: '1px solid rgba(217,119,6,0.2)'
+                    }}>FLAGGED</span>
+                  </td>
+                </tr>
+              );
+            })}
             {watchNodes.length === 0 && (
               <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>No accounts currently on watchlist.</td></tr>
             )}

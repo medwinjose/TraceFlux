@@ -47,6 +47,12 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# Global System Settings
+system_settings = {
+    "auto_freeze_confidence": 0.925,
+    "max_hops": 3
+}
+
 def initialize_graph():
     """Builds and stores the synthetic demo graph in global state."""
     global graph, fraud_chain_demo, dispatcher
@@ -85,6 +91,12 @@ def _refresh_account_score(acc: Account) -> str:
     """Computes features, updates the account's risk score, and returns classification."""
     feats = compute_features(graph, acc.account_id)
     acc.risk_score = score_account(feats)
+    
+    # Auto-freeze logic
+    if acc.risk_score >= system_settings["auto_freeze_confidence"] and acc.freeze_status != "frozen":
+        acc.freeze_status = "frozen"
+        # Optional: dispatch alert if we had access to dispatcher here
+        
     return classify(acc.risk_score)
 
 @app.get("/accounts")
@@ -141,6 +153,18 @@ def get_account_explanation(account_id: str):
     feats = compute_features(graph, account_id)
     return explain_score(feats)
 
+@app.get("/settings")
+def get_settings():
+    return system_settings
+
+@app.post("/settings")
+def update_settings(new_settings: dict):
+    if "auto_freeze_confidence" in new_settings:
+        system_settings["auto_freeze_confidence"] = float(new_settings["auto_freeze_confidence"])
+    if "max_hops" in new_settings:
+        system_settings["max_hops"] = int(new_settings["max_hops"])
+    return system_settings
+
 @app.post("/report_fraud/{account_id}")
 async def report_fraud_endpoint(account_id: str, background_tasks: BackgroundTasks):
     """
@@ -166,7 +190,7 @@ async def report_fraud_endpoint(account_id: str, background_tasks: BackgroundTas
     already_frozen = acc.freeze_status == "frozen"
 
     # ── Tag Propagation Engine ────────────────────────────────────────────────
-    frozen_chain = graph.report_fraud(account_id, max_hops=5)
+    frozen_chain = graph.report_fraud(account_id, max_hops=system_settings["max_hops"])
 
     # Register AFTER successful propagation (prevents replay)
     evidence_chain.register(report_id)
