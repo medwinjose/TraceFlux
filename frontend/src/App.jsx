@@ -162,7 +162,7 @@ export default function App() {
         {/* Right Inspection & Alert Drawer */}
         <div className="w-96 border-l border-slate-800 flex flex-col h-full bg-[#080C14]">
           <div className="h-1/2 border-b border-slate-800">
-            <RiskPanel selectedNodeId={selectedNodeId} />
+            <RiskPanel selectedNodeId={selectedNodeId} nodes={nodes} />
           </div>
           <div className="h-1/2">
             <AlertFeed alerts={alerts} />
