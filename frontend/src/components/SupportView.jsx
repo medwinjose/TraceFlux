@@ -126,14 +126,12 @@ export default function SupportView() {
                       backdropFilter: 'blur(12px)',
                       WebkitBackdropFilter: 'blur(12px)',
                       border: '1px solid',
-                      borderLeft: isHovered ? '3px solid var(--cyan)' : '1px solid var(--border-lo)',
-                      borderColor: isOpen ? 'var(--border-md)' : (isHovered ? 'var(--border-hi)' : 'var(--border-lo)'),
+                      borderColor: isOpen ? 'var(--border-md)' : (isHovered ? 'var(--border-md)' : 'var(--border-lo)'),
                       borderRadius: 8,
                       overflow: 'hidden',
                       cursor: 'pointer',
-                      transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                      boxShadow: isOpen ? '0 8px 24px rgba(0,0,0,0.08)' : (isHovered ? '0 4px 16px rgba(0,255,255,0.1)' : 'none'),
-                      transform: isOpen ? 'scale(1.01)' : (isHovered ? 'scale(1.008) translateX(4px)' : 'scale(1)')
+                      transition: 'all 0.2s ease',
+                      boxShadow: isOpen ? '0 4px 12px rgba(0,0,0,0.05)' : (isHovered ? '0 2px 6px rgba(0,0,0,0.03)' : 'none'),
                     }}
                   >
                     <div style={{ 
