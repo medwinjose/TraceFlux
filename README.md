@@ -25,7 +25,8 @@
 TraceNet is a two-engine interdiction layer operating at the NPCI/UPI central switch rail:
 1. **Reactive Tag Propagation Engine (`graph_engine.py`)**: Propagates trace tags forward hop-by-hop upon fraud report. Uses strict timestamp filtering (`tx.timestamp >= earliest_ts`) so a mule's unrelated past transactions are never falsely frozen.
 2. **Proactive Anomaly Scoring Engine (`ml_engine/anomaly_scorer.py`)**: Continuously scores accounts on mule-likelihood using 5 behavioral signals (`fan_out_ratio`, `velocity`, `dormant_reactivation`, `structuring_score`, `avg_hold_time_minutes`).
-3. **Live Dashboard (`frontend/`)**: HTML5 Canvas force-directed graph with glowing energy trace pulses, dynamic ML explainability risk inspector (`RiskPanel.jsx`), and WebSocket alert feed (`AlertFeed.jsx`).
+3. **Cryptographic Evidence Chain (`security.py` & `explainer.py`)**: Generates plain-English reasons for every freeze and secures them in a tamper-evident cryptographic hash chain with HMAC signatures.
+4. **Live Dashboard (`frontend/`)**: HTML5 Canvas force-directed graph with glowing energy trace pulses, dynamic ML explainability risk inspector (`RiskPanel.jsx`), and WebSocket alert feed (`AlertFeed.jsx`).
 
 ---
 
@@ -41,6 +42,8 @@ Team-Nova-Medwin/
 │   ├── dispatcher.py              # FreezeAlert dispatcher
 │   ├── main.py                    # FastAPI server & WebSocket hub
 │   ├── simulate.py                # Synthetic data generator (40 normal + 9-node fraud chain)
+│   ├── security.py                # Tamper-evident evidence chain & HMAC signatures
+│   ├── explainer.py               # Plain-English translation of ML feature contributions
 │   ├── run_demo.py                # One-click launcher script
 │   ├── test_system.py             # System verification test suite
 │   ├── validation.py              # ML scoring validation script
@@ -66,6 +69,7 @@ Team-Nova-Medwin/
             ├── AlertFeed.jsx       # WebSocket live alert stream
             ├── WatchlistView.jsx   # Bar chart + table of WATCH/HIGH_RISK accounts
             ├── AssetsView.jsx      # Per-bank institutional exposure grid (waffle chart)
+            ├── EvidenceView.jsx    # Cryptographic ledger view & verification UI
             ├── SettingsView.jsx    # System parameter display
             └── SupportView.jsx     # Contact & documentation links
 ```
@@ -78,4 +82,6 @@ Team-Nova-Medwin/
 - `GET /accounts` — Returns state of all accounts with dynamically computed risk scores.
 - `GET /accounts/{id}/explain` — Returns feature weight contribution breakdown for judge explainability.
 - `POST /reset` — Restores clean initial graph state between live demo runs.
+- `GET /evidence_chain` — Returns the full tamper-evident cryptographic hash chain of all freezes.
+- `GET /evidence_chain/verify` — Validates the entire chain's integrity and returns a verification verdict.
 - `WS /ws` — Pushes real-time `TAG_PROPAGATED`, `ACCOUNT_FROZEN`, and `DEMO_RESET` events.
