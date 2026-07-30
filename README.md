@@ -1,77 +1,74 @@
-# TraceNet — Systems & Backend Engine
+# TraceNet — Real-Time Cross-Institution Fraud Tracing & Interdiction Rail
 
-Real-Time, Privacy-Preserving Cross-Institution Fraud Tracing & Interdiction System.
-
-## Architecture & Scope Summary
-
-This repository contains the Systems & Backend infrastructure for **TraceNet**:
-1. **`graph_engine.py`**: High-performance transaction graph engine (`Account` & `Transaction` dataclasses) implementing BFS reactive tag propagation with timestamp filtering to prevent false-positive tagging of unrelated past transactions.
-2. **`ml_engine/anomaly_scorer.py`**: Integration stub matching the ML contract interface (`AccountFeatures`, `compute_features`, `score_account`, `classify`, `explain_score`).
-3. **`simulate.py`**: Synthetic demo data generator producing ~40 normal accounts, 150 background transactions, and an injected fast fraud chain (`VICTIM` → `MULE1` → `MULE2` → `MULE3` → `CASH_OUT`).
-4. **`dispatcher.py`**: Structured freeze alert dispatcher generating interdiction event notifications.
-5. **`main.py`**: FastAPI server exposing REST API endpoints and real-time WebSocket switch hub.
-6. **`frontend/`**: React + Vite interactive dashboard featuring HTML5 Canvas force-directed graph animations, pulsing red shockwaves on frozen nodes, live WebSocket alert stream, and a documented drop-in `<RiskPanelSlot />` for teammate integration.
-
----
-
-## Deliverables Checklist
-
-- [x] `graph_engine.py` — Schema unchanged from Section 6.2; BFS tag propagation with hop limit 5 & strict timestamp filter.
-- [x] `ml_engine/anomaly_scorer.py` — Exposes exact function signatures (`compute_features`, `score_account`, `classify`, `explain_score`).
-- [x] `simulate.py` — Demo graph generator with normal population + fast injected mule chain.
-- [x] `dispatcher.py` — Structured freeze alert formatter.
-- [x] `main.py` — FastAPI server + WebSocket real-time event bus (`POST /report_fraud/{id}`, `GET /accounts`, `GET /accounts/{id}/explain`, `WS /ws`).
-- [x] `frontend/` — Live animated force-directed graph dashboard with documented ML `<RiskPanelSlot />`.
-- [x] `test_system.py` — Verification suite passing all core system rules.
+> **⚡ 2-MINUTE QUICKSTART FOR JUDGES & TEAMMATES**
+>
+> 1. **Install Backend Dependencies**:
+>    ```bash
+>    pip install -r backend/requirements.txt
+>    ```
+> 2. **Run System Verification Tests**:
+>    ```bash
+>    python backend/test_system.py
+>    python backend/validation.py
+>    ```
+> 3. **Launch TraceNet Full Stack**:
+>    ```bash
+>    python backend/run_demo.py
+>    ```
+>    - **React Fraud Dashboard**: [http://127.0.0.1:5173](http://127.0.0.1:5173)
+>    - **FastAPI OpenAPI Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
 
-## Quick Start & Running locally
+## System Overview
 
-### 1. Run Verification Suite
-```bash
-python test_system.py
-```
-
-### 2. Start Backend & Dashboard
-```bash
-python run_demo.py
-```
-
-Or start backend and frontend separately:
-
-**Backend:**
-```bash
-uvicorn main:app --reload --port 8000
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm run dev
-```
-
-Open dashboard at **http://127.0.0.1:5173**.
+TraceNet is a two-engine interdiction layer operating at the NPCI/UPI central switch rail:
+1. **Reactive Tag Propagation Engine (`graph_engine.py`)**: Propagates trace tags forward hop-by-hop upon fraud report. Uses strict timestamp filtering (`tx.timestamp >= earliest_ts`) so a mule's unrelated past transactions are never falsely frozen.
+2. **Proactive Anomaly Scoring Engine (`ml_engine/anomaly_scorer.py`)**: Continuously scores accounts on mule-likelihood using 5 behavioral signals (`fan_out_ratio`, `velocity`, `dormant_reactivation`, `structuring_score`, `avg_hold_time_minutes`).
+3. **Live Dashboard (`frontend/`)**: HTML5 Canvas force-directed graph with glowing energy trace pulses, dynamic ML explainability risk inspector (`RiskPanel.jsx`), and WebSocket alert feed (`AlertFeed.jsx`).
 
 ---
 
-## Teammate ML Component Integration
+## Component Architecture
 
-Your teammate's `ml_engine/anomaly_scorer.py` exposes:
-```python
-@dataclass
-class AccountFeatures:
-    account_id: str
-    fan_out_ratio: float
-    velocity: float
-    dormant_reactivation: bool
-    structuring_score: float
-    avg_hold_time_minutes: float
-
-def compute_features(graph: "TransactionGraph", account_id: str) -> AccountFeatures: ...
-def score_account(features: AccountFeatures) -> float: ...
-def classify(score: float) -> str: ...  # "CLEAN" | "WATCH" | "HIGH_RISK"
-def explain_score(features: AccountFeatures) -> dict: ...
+```
+Team-Nova-Medwin/
+├── README.md
+├── verify_live_stack.py          # In-process full stack integration check
+├── backend/
+│   ├── requirements.txt           # Pinned backend dependencies
+│   ├── graph_engine.py            # TransactionGraph BFS tag propagation engine
+│   ├── dispatcher.py              # FreezeAlert dispatcher
+│   ├── main.py                    # FastAPI server & WebSocket hub
+│   ├── simulate.py                # Synthetic data generator (40 accounts + fraud chain)
+│   ├── run_demo.py                # One-click launcher script
+│   ├── test_system.py             # System verification test suite
+│   ├── validation.py              # ML scoring validation script
+│   └── ml_engine/
+│       ├── __init__.py
+│       └── anomaly_scorer.py      # Behavioral feature extraction & ML scoring
+└── frontend/
+    ├── index.html
+    ├── package.json
+    ├── vite.config.js
+    └── src/
+        ├── App.jsx                # Main application component & WS listener
+        ├── index.css
+        ├── main.jsx
+        └── components/
+            ├── AlertFeed.jsx       # WebSocket live alert stream
+            ├── Header.jsx          # Switch simulation header & control bar
+            ├── NetworkGraph.jsx    # Canvas force-directed physics graph
+            ├── RiskPanel.jsx       # Live ML risk inspector & explainability
+            └── StatsBar.jsx        # Real-time interdiction metrics
 ```
 
-In the frontend, her Risk Panel drops directly into [`frontend/src/components/RiskPanelSlot.jsx`](file:///c:/Users/medwi/OneDrive/Documents/Summer%20Code%20Fest/frontend/src/components/RiskPanelSlot.jsx).
+---
+
+## Verification & API Endpoints
+
+- `POST /report_fraud/{account_id}` — Triggers BFS tag propagation, auto-freezes downstream chain, returns frozen chain JSON & dispatches alerts. (Gracefully handles non-existent IDs with HTTP 404, idempotent on duplicate reports).
+- `GET /accounts` — Returns state of all accounts with dynamically computed risk scores.
+- `GET /accounts/{id}/explain` — Returns feature weight contribution breakdown for judge explainability.
+- `POST /reset` — Restores clean initial graph state between live demo runs.
+- `WS /ws` — Pushes real-time `TAG_PROPAGATED`, `ACCOUNT_FROZEN`, and `DEMO_RESET` events.

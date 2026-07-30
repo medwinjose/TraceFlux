@@ -60,12 +60,36 @@ def test_demo_graph_simulation():
     frozen = graph.report_fraud("VICTIM")
     assert len(frozen) == 5, f"Expected 5 frozen nodes, got {len(frozen)}"
     assert frozen == fraud_chain, f"Frozen chain {frozen} does not match injected chain {fraud_chain}"
-    print("[SUCCESS] Synthetic demo graph simulation test PASSED!")
+def test_reset_and_error_resilience():
+    """
+    DEMO HARDENING VERIFICATION:
+    Verifies that non-existent accounts fail gracefully and system reset restores clean initial state.
+    """
+    graph, fraud_chain = build_demo_graph()
+    
+    # 1. Invalid account check
+    non_existent = graph.report_fraud("NON_EXISTENT_ACC_999")
+    assert non_existent == [], "Non-existent account report should return empty list"
+    
+    # 2. Fraud report execution
+    frozen_1 = graph.report_fraud("VICTIM")
+    assert len(frozen_1) > 0, "Fraud report on VICTIM should freeze chain"
+    
+    # 3. Duplicate report idempotency check
+    frozen_2 = graph.report_fraud("VICTIM")
+    assert frozen_2 == frozen_1, "Duplicate report on VICTIM should return already frozen chain safely"
+
+    # 4. System Reset check
+    clean_graph, _ = build_demo_graph()
+    assert clean_graph.accounts["VICTIM"].freeze_status == "active", "Reset graph VICTIM account should be active"
+    assert clean_graph.accounts["VICTIM"].is_flagged == False, "Reset graph VICTIM account should not be flagged"
+    print("[SUCCESS] Reset and error resilience test PASSED!")
 
 if __name__ == "__main__":
     print("--- RUNNING TRACENET SYSTEM VERIFICATION TESTS ---")
     test_timestamp_filtered_propagation()
     test_ml_scoring_and_explainability()
     test_demo_graph_simulation()
+    test_reset_and_error_resilience()
     print("--- ALL VERIFICATION TESTS PASSED SUCCESSFULLY! ---")
 
