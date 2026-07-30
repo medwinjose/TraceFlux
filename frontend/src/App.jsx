@@ -3,7 +3,7 @@ import Header from './components/Header';
 import StatsBar from './components/StatsBar';
 import NetworkGraph from './components/NetworkGraph';
 import AlertFeed from './components/AlertFeed';
-import RiskPanelSlot from './components/RiskPanelSlot';
+import RiskPanel from './components/RiskPanel';
 
 export default function App() {
   const [nodes, setNodes] = useState([]);
@@ -162,7 +162,7 @@ export default function App() {
         {/* Right Inspection & Alert Drawer */}
         <div className="w-96 border-l border-slate-800 flex flex-col h-full bg-[#080C14]">
           <div className="h-1/2 border-b border-slate-800">
-            <RiskPanelSlot selectedNodeId={selectedNodeId} />
+            <RiskPanel selectedNodeId={selectedNodeId} />
           </div>
           <div className="h-1/2">
             <AlertFeed alerts={alerts} />
