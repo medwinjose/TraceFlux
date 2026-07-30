@@ -132,50 +132,56 @@ async def report_fraud_endpoint(account_id: str, background_tasks: BackgroundTas
     """
     Triggers reactive tag propagation BFS, updates freeze status,
     dispatches structured alerts, and broadcasts WS real-time animation events.
+    Fails gracefully with HTTP 404 if account does not exist.
+    Idempotent if called multiple times on an already frozen account.
     """
     if account_id not in graph.accounts:
-        raise HTTPException(status_code=404, detail="Account not found")
+        raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found in network graph")
+
+    acc = graph.accounts[account_id]
+    already_frozen = acc.freeze_status == "frozen"
 
     # Run Tag Propagation Engine
     frozen_chain = graph.report_fraud(account_id, max_hops=5)
 
     dispatched_alerts = []
-    for idx, acc_id in enumerate(frozen_chain):
-        acc = graph.accounts[acc_id]
-        reason = "VICTIM_REPORT_ORIGIN" if idx == 0 else "PROPAGATED_TAG"
-        
-        alert = dispatcher.dispatch_freeze_alert(
-            account_id=acc.account_id,
-            bank_id=acc.bank_id,
-            reason=reason,
-            traced_path=frozen_chain[:idx+1],
-            risk_score=acc.risk_score,
-            message=f"AUTOFREEZE: Account {acc.account_id} @ {acc.bank_id} locked via Tag Propagation [Hop {idx}]"
-        )
-        dispatched_alerts.append(asdict(alert))
-
-    # Broadcast WebSocket animation step async
-    async def animate_propagation():
+    if not already_frozen:
         for idx, acc_id in enumerate(frozen_chain):
-            acc = graph.accounts[acc_id]
-            # Push tag propagation event for node flashing
-            await manager.broadcast("TAG_PROPAGATED", {
-                "account_id": acc_id,
-                "bank_id": acc.bank_id,
-                "hop": idx,
-                "freeze_status": acc.freeze_status,
-                "traced_path": frozen_chain[:idx+1],
-            })
-            await asyncio.sleep(0.35)  # Visual pacing for demo animation
+            a_acc = graph.accounts[acc_id]
+            reason = "VICTIM_REPORT_ORIGIN" if idx == 0 else "PROPAGATED_TAG"
+            
+            alert = dispatcher.dispatch_freeze_alert(
+                account_id=a_acc.account_id,
+                bank_id=a_acc.bank_id,
+                reason=reason,
+                traced_path=frozen_chain[:idx+1],
+                risk_score=a_acc.risk_score,
+                message=f"AUTOFREEZE: Account {a_acc.account_id} @ {a_acc.bank_id} locked via Tag Propagation [Hop {idx}]"
+            )
+            dispatched_alerts.append(asdict(alert))
 
-    background_tasks.add_task(animate_propagation)
+        # Broadcast WebSocket animation step async
+        async def animate_propagation():
+            for idx, acc_id in enumerate(frozen_chain):
+                a_acc = graph.accounts[acc_id]
+                await manager.broadcast("TAG_PROPAGATED", {
+                    "account_id": acc_id,
+                    "bank_id": a_acc.bank_id,
+                    "hop": idx,
+                    "freeze_status": a_acc.freeze_status,
+                    "traced_path": frozen_chain[:idx+1],
+                })
+                await asyncio.sleep(0.35)
+
+        background_tasks.add_task(animate_propagation)
 
     return {
-        "status": "SUCCESS",
+        "status": "ALREADY_FROZEN" if already_frozen else "SUCCESS",
         "reported_account": account_id,
         "frozen_chain": frozen_chain,
         "total_frozen": len(frozen_chain),
-        "alerts": dispatched_alerts,
+        "alerts": dispatched_alerts if not already_frozen else [],
+        "note": "Account was already frozen prior to this report" if already_frozen else "Tag propagation completed"
     }
 
 @app.post("/reset")
