@@ -82,7 +82,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.get("/api/")
 def read_root():
     return {
         "system": "TraceNet Core Engine",
@@ -104,7 +104,7 @@ def _refresh_account_score(acc: Account) -> str:
         
     return classify(acc.risk_score)
 
-@app.get("/accounts")
+@app.get("/api/accounts")
 def get_accounts():
     """Returns current state of all accounts with refreshed risk scores"""
     result = []
@@ -115,12 +115,12 @@ def get_accounts():
         result.append(acc_dict)
     return result
 
-@app.get("/transactions")
+@app.get("/api/transactions")
 def get_transactions():
     """Returns all transactions recorded in graph"""
     return [asdict(tx) for tx in graph.transactions.values()]
 
-@app.get("/graph_data")
+@app.get("/api/graph_data")
 def get_graph_data():
     """Returns combined node and edge network payload for frontend visualization"""
     nodes = []
@@ -149,7 +149,7 @@ def get_graph_data():
 
     return {"nodes": nodes, "edges": edges, "demo_fraud_chain": fraud_chain_demo}
 
-@app.get("/accounts/{account_id}/explain")
+@app.get("/api/accounts/{account_id}/explain")
 def get_account_explanation(account_id: str):
     """Calls ML explain_score and returns feature breakdown for judge explanation panel"""
     if account_id not in graph.accounts:
@@ -158,11 +158,11 @@ def get_account_explanation(account_id: str):
     feats = compute_features(graph, account_id)
     return explain_score(feats)
 
-@app.get("/settings")
+@app.get("/api/settings")
 def get_settings():
     return system_settings
 
-@app.post("/settings")
+@app.post("/api/settings")
 def update_settings(new_settings: dict):
     if "auto_freeze_confidence" in new_settings:
         system_settings["auto_freeze_confidence"] = float(new_settings["auto_freeze_confidence"])
@@ -170,7 +170,7 @@ def update_settings(new_settings: dict):
         system_settings["max_hops"] = int(new_settings["max_hops"])
     return system_settings
 
-@app.post("/report_fraud/{account_id}")
+@app.post("/api/report_fraud/{account_id}")
 async def report_fraud_endpoint(account_id: str, background_tasks: BackgroundTasks):
     """
     Triggers reactive tag propagation BFS, updates freeze status,
@@ -283,14 +283,14 @@ async def report_fraud_endpoint(account_id: str, background_tasks: BackgroundTas
         "note": "Account was already frozen prior to this report" if already_frozen else "Tag propagation + evidence chain append completed"
     }
 
-@app.post("/reset")
+@app.post("/api/reset")
 async def reset_demo():
     """Resets synthetic graph state and evidence chain"""
     initialize_graph()  # also calls evidence_chain.reset()
     await manager.broadcast("DEMO_RESET", {"message": "Synthetic graph reset to initial state"})
     return {"status": "RESET_COMPLETE", "account_count": len(graph.accounts)}
 
-@app.get("/evidence_chain")
+@app.get("/api/evidence_chain")
 def get_evidence_chain():
     """Returns all tamper-evident evidence records, most recent first."""
     valid, _ = evidence_chain.verify_chain()
@@ -303,7 +303,7 @@ def get_evidence_chain():
         "records":        evidence_chain.get_all(),
     }
 
-@app.get("/evidence_chain/verify")
+@app.get("/api/evidence_chain/verify")
 def verify_evidence_chain():
     """Walks every record and verifies the hash chain has not been tampered with."""
     valid, errors = evidence_chain.verify_chain()
@@ -314,12 +314,12 @@ def verify_evidence_chain():
         "verdict":       "CHAIN VERIFIED — No tampering detected." if valid else "TAMPERING DETECTED — Chain integrity broken!",
     }
 
-@app.get("/alerts")
+@app.get("/api/alerts")
 def get_alerts():
     """Returns recent freeze & alert dispatcher records"""
     return dispatcher.get_recent_alerts()
 
-@app.websocket("/ws")
+@app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
