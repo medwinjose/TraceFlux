@@ -45,7 +45,8 @@ export default function App() {
 
     const connect = () => {
       // Use relative path so it goes through the Vite WS proxy
-      const ws = new WebSocket(`ws://${location.host}/ws`);
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${protocol}//${location.host}/api/ws`);
 
       ws.onopen = () => setWsConnected(true);
 
