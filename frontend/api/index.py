@@ -11,6 +11,11 @@ from typing import List, Dict, Any
 import asyncio
 import json
 import time
+import sys
+import os
+
+# Fix for Vercel Serverless Function module resolution
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from graph_engine import TransactionGraph, Transaction, Account
 from ml_engine.anomaly_scorer import compute_features, score_account, explain_score, classify
