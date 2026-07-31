@@ -9,11 +9,6 @@ window.fetch = function() {
   let [resource, config] = arguments;
   if (typeof resource === 'string' && resource.startsWith('/api') && import.meta.env.VITE_API_URL) {
     resource = import.meta.env.VITE_API_URL + resource.replace('/api', '');
-    config = config || {};
-    config.headers = {
-      ...config.headers,
-      'Bypass-Tunnel-Reminder': 'true'
-    };
   }
   return originalFetch(resource, config);
 };
