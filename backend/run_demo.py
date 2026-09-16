@@ -1,5 +1,5 @@
 """
-TraceNet - Master Demo Launcher Script
+TraceFlux - Master Demo Launcher Script
 Launches FastAPI backend (port 8000) and Vite frontend (port 5173).
 """
 import subprocess
@@ -9,7 +9,7 @@ import os
 
 def launch():
     print("=================================================================")
-    print("  TRACENET -- REAL-TIME FRAUD TRACING & INTERDICTION SYSTEM")
+    print("  TRACEFLUX -- REAL-TIME FRAUD TRACING & INTERDICTION SYSTEM")
     print("=================================================================")
     print("Starting FastAPI Backend Server on http://127.0.0.1:8000 ...")
 
@@ -29,7 +29,7 @@ def launch():
         shell=True
     )
 
-    print("\n[SUCCESS] TraceNet Systems Layer running!")
+    print("\n[SUCCESS] TraceFlux Systems Layer running!")
     print(" - Backend API & WebSocket: http://127.0.0.1:8000")
     print(" - API Docs (Swagger):       http://127.0.0.1:8000/docs")
     print(" - React Fraud Dashboard:   http://127.0.0.1:5173")
@@ -40,7 +40,7 @@ def launch():
         backend.wait()
         frontend.wait()
     except KeyboardInterrupt:
-        print("\nShutting down TraceNet servers...")
+        print("\nShutting down TraceFlux servers...")
         backend.terminate()
         frontend.terminate()
 

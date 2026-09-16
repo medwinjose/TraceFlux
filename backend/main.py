@@ -1,5 +1,5 @@
 """
-TraceNet - FastAPI & WebSocket Backend Service
+TraceFlux - FastAPI & WebSocket Backend Service
 Owner: Systems/Backend
 Exposes REST API endpoints and real-time WebSocket connection manager.
 """
@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
     initialize_graph()
     yield  # app runs here; add cleanup after yield if needed
 
-app = FastAPI(title="TraceNet API & WebSocket Engine", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="TraceFlux API & WebSocket Engine", version="1.0.0", lifespan=lifespan)
 
 # CORS — permissive for hackathon/demo environment
 app.add_middleware(
@@ -80,7 +80,7 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {
-        "system": "TraceNet Core Engine",
+        "system": "TraceFlux Core Engine",
         "status": "ONLINE",
         "version": "1.0.0",
         "hmac_key_fingerprint": HMAC_KEY_FINGERPRINT,
@@ -322,7 +322,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.send_text(json.dumps({
             "event": "CONNECTED",
             "timestamp": time.time(),
-            "data": {"message": "Connected to TraceNet Real-time Switch Event Bus"}
+            "data": {"message": "Connected to TraceFlux Real-time Switch Event Bus"}
         }))
         while True:
             # Keep alive and handle incoming client commands if any

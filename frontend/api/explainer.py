@@ -1,5 +1,5 @@
 """
-TraceNet - Plain-English Freeze Receipt Generator
+TraceFlux - Plain-English Freeze Receipt Generator
 Owner: Systems/Backend
 
 Converts raw ML feature weights and freeze context into a single human-readable
@@ -35,7 +35,7 @@ def generate_plain_english_reason(
     if freeze_type == "VICTIM_REPORT":
         return (
             f"Account {account_id} was reported as the origin of a fraudulent transaction. "
-            f"TraceNet has initiated tag propagation across all downstream recipients."
+            f"TraceFlux has initiated tag propagation across all downstream recipients."
         )
 
     if freeze_type == "TAG_PROPAGATED":
@@ -55,7 +55,7 @@ def generate_plain_english_reason(
         return (
             f"Account {account_id} received money{src_label} (a confirmed fraud source) "
             f"at hop {hop} of the interdiction chain — {speed_note}{fan_note}. "
-            f"Classic money-mule relay pattern. Auto-frozen by TraceNet tag propagation."
+            f"Classic money-mule relay pattern. Auto-frozen by TraceFlux tag propagation."
         )
 
     # ML_HIGH_RISK — compose from top contributing features

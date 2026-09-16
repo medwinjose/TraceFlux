@@ -1,10 +1,10 @@
 ﻿"""
-TraceNet - Security Module
+TraceFlux - Security Module
 Owner: Systems/Backend
 
 Provides three security primitives:
   1. HMAC-SHA256 signing of outgoing freeze commands
-     -> Banks can verify a freeze instruction genuinely came from TraceNet.
+     -> Banks can verify a freeze instruction genuinely came from TraceFlux.
   2. Hash-chained tamper-evident evidence log
      -> Each freeze record is chained to the previous one via sha256(prev_hash || event_bytes).
        Altering any past record breaks every hash that follows.
@@ -21,7 +21,7 @@ import time
 from typing import Any, Dict, List, Tuple
 
 # -- HMAC Key ------------------------------------------------------------------
-_HMAC_KEY: bytes = os.getenv("TRACENET_HMAC_KEY", secrets.token_hex(32)).encode()
+_HMAC_KEY: bytes = os.getenv("TRACEFLUX_HMAC_KEY", secrets.token_hex(32)).encode()
 HMAC_KEY_FINGERPRINT: str = hashlib.sha256(_HMAC_KEY).hexdigest()[:16]
 GENESIS_HASH = "0" * 64
 

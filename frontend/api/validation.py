@@ -1,5 +1,5 @@
 """
-TraceNet - Validation Script
+TraceFlux - Validation Script
 Tests anomaly_scorer.py against a simulated TransactionGraph.
 """
 import random
@@ -135,7 +135,7 @@ def build_demo_graph(num_normal_accounts=40, chain_length=5):
 
 def run_validation():
     print("====================================================")
-    print("TraceNet ML Engine Validation Test Suite")
+    print("TraceFlux ML Engine Validation Test Suite")
     print("====================================================\n")
     
     # Set random seed for reproducibility

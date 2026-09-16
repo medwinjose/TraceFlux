@@ -1,5 +1,5 @@
 """
-TraceNet - End-to-End System Test Suite
+TraceFlux - End-to-End System Test Suite
 Verifies core graph propagation rules, ML feature extraction, and synthetic simulation.
 """
 import time
@@ -86,7 +86,7 @@ def test_reset_and_error_resilience():
     print("[SUCCESS] Reset and error resilience test PASSED!")
 
 if __name__ == "__main__":
-    print("--- RUNNING TRACENET SYSTEM VERIFICATION TESTS ---")
+    print("--- RUNNING TRACEFLUX SYSTEM VERIFICATION TESTS ---")
     test_timestamp_filtered_propagation()
     test_ml_scoring_and_explainability()
     test_demo_graph_simulation()

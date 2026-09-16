@@ -1,5 +1,5 @@
 """
-TraceNet - Synthetic Demo Data Generator
+TraceFlux - Synthetic Demo Data Generator
 Creates a population of normal accounts plus a complex branching mule network
 so the live demo has something real for both engines to catch.
 """
