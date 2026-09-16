@@ -107,9 +107,9 @@ export default function App() {
     finally { setIsReporting(false); }
   };
 
-  const handleReset = async () => {
+  const handleReset = async (nodes = 40) => {
     try {
-      await fetch('/api/reset', { method: 'POST' });
+      await fetch(`/api/reset?nodes=${nodes}`, { method: 'POST' });
       setActiveTrace([]);
       setAlerts([]);
       setSelectedNode(null);

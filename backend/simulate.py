@@ -9,9 +9,12 @@ from typing import Tuple, List
 from graph_engine import TransactionGraph, Transaction
 from ml_engine.anomaly_scorer import compute_features, score_account
 
-def build_demo_graph(num_normal_accounts: int = 15, chain_length: int = 5) -> Tuple[TransactionGraph, List[str]]:
+def build_demo_graph(num_normal_accounts: int = 40, chain_length: int = 5) -> Tuple[TransactionGraph, List[str]]:
     g = TransactionGraph()
     banks = ["BankA", "BankB", "BankC", "BankD", "BankE", "BankF"]
+
+    # Limit minimum to ensure sufficient background data
+    num_normal_accounts = max(15, num_normal_accounts)
 
     # 1. Populate normal accounts
     for i in range(num_normal_accounts):
@@ -22,14 +25,15 @@ def build_demo_graph(num_normal_accounts: int = 15, chain_length: int = 5) -> Tu
 
     # 2. Record random background transactions for normal accounts
     acc_keys = list(g.accounts.keys())
-    for i in range(80):
+    bg_tx_count = max(80, num_normal_accounts * 3)
+    for i in range(bg_tx_count):
         src, dst = random.sample(acc_keys, 2)
         g.record_transaction(Transaction(
             tx_id=f"TX{i:04d}",
             src_account=src,
             dst_account=dst,
             amount=round(random.uniform(100, 8000), 2),
-            timestamp=now + (i * 15),
+            timestamp=now + (i * (3600 / bg_tx_count)),
         ))
 
     # 3. Injected fraud branching network: VICTIM -> MULE1 -> [MULE2a, MULE2b] -> [MULE3a, MULE3b, MULE3c] -> CASH_OUT
