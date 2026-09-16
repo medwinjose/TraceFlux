@@ -30,7 +30,7 @@ def generate_plain_english_reason(
 
     Returns:
         A one-to-two sentence plain-English explanation suitable for display
-        to non-technical judges and regulators.
+        to non-technical stakeholders and regulators.
     """
     if freeze_type == "VICTIM_REPORT":
         return (

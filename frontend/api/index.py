@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="TraceFlux API & WebSocket Engine", version="1.0.0", lifespan=lifespan)
 
-# CORS — permissive for hackathon/demo environment
+# CORS — permissive for local development environment
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -151,7 +151,7 @@ def get_graph_data():
 
 @app.get("/api/accounts/{account_id}/explain")
 def get_account_explanation(account_id: str):
-    """Calls ML explain_score and returns feature breakdown for judge explanation panel"""
+    """Calls ML explain_score and returns feature breakdown for explanation panel"""
     if account_id not in graph.accounts:
         raise HTTPException(status_code=404, detail="Account not found")
     
