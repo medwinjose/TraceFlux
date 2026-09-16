@@ -53,10 +53,10 @@ system_settings = {
     "max_hops": 3
 }
 
-def initialize_graph():
+def initialize_graph(nodes: int = 40):
     """Builds and stores the synthetic demo graph in global state."""
     global graph, fraud_chain_demo, dispatcher
-    graph, fraud_chain_demo = build_demo_graph(num_normal_accounts=40, chain_length=5)
+    graph, fraud_chain_demo = build_demo_graph(num_normal_accounts=nodes, chain_length=5)
     dispatcher = AlertDispatcher()
     evidence_chain.reset()
 
@@ -279,9 +279,9 @@ async def report_fraud_endpoint(account_id: str, background_tasks: BackgroundTas
     }
 
 @app.post("/reset")
-async def reset_demo():
+async def reset_demo(nodes: int = 40):
     """Resets synthetic graph state and evidence chain"""
-    initialize_graph()  # also calls evidence_chain.reset()
+    initialize_graph(nodes=nodes)  # also calls evidence_chain.reset()
     await manager.broadcast("DEMO_RESET", {"message": "Synthetic graph reset to initial state"})
     return {"status": "RESET_COMPLETE", "account_count": len(graph.accounts)}
 
