@@ -1,5 +1,5 @@
 """
-TraceNet - Mule Account Anomaly Scorer
+TraceFlux - Mule Account Anomaly Scorer
 Owner: ML
 Computes a risk score per account BEFORE any fraud is reported,
 using behavioral features that correlate with mule activity.

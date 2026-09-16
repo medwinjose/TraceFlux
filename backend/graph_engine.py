@@ -1,5 +1,5 @@
 """
-TraceNet - Core Transaction Graph & Tag Propagation Engine
+TraceFlux - Core Transaction Graph & Tag Propagation Engine
 Owner: Systems/Backend
 """
 from dataclasses import dataclass, field

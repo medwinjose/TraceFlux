@@ -1,4 +1,4 @@
-# TraceNet — Real-Time Cross-Institution Fraud Tracing & Interdiction Rail
+# TraceFlux — Real-Time Cross-Institution Fraud Tracing & Interdiction Rail
 
 > **⚡ 2-MINUTE QUICKSTART FOR JUDGES & TEAMMATES**
 >
@@ -11,7 +11,7 @@
 >    python backend/test_system.py
 >    python backend/validation.py
 >    ```
-> 3. **Launch TraceNet Full Stack**:
+> 3. **Launch TraceFlux Full Stack**:
 >    ```bash
 >    python backend/run_demo.py
 >    ```
@@ -22,7 +22,7 @@
 
 ## System Overview
 
-TraceNet is a two-engine interdiction layer operating at the NPCI/UPI central switch rail:
+TraceFlux is a two-engine interdiction layer operating at the NPCI/UPI central switch rail:
 1. **Reactive Tag Propagation Engine (`graph_engine.py`)**: Propagates trace tags forward hop-by-hop upon fraud report. Uses strict timestamp filtering (`tx.timestamp >= earliest_ts`) so a mule's unrelated past transactions are never falsely frozen.
 2. **Proactive Anomaly Scoring Engine (`ml_engine/anomaly_scorer.py`)**: Continuously scores accounts on mule-likelihood using 5 behavioral signals (`fan_out_ratio`, `velocity`, `dormant_reactivation`, `structuring_score`, `avg_hold_time_minutes`).
 3. **Cryptographic Evidence Chain (`security.py` & `explainer.py`)**: Generates plain-English reasons for every freeze and secures them in a tamper-evident cryptographic hash chain with HMAC signatures.
@@ -33,7 +33,7 @@ TraceNet is a two-engine interdiction layer operating at the NPCI/UPI central sw
 ## Component Architecture
 
 ```
-Team-Nova-Medwin/
+TraceFlux/
 ├── README.md
 ├── verify_live_stack.py          # In-process full stack integration check
 ├── backend/

@@ -20,7 +20,7 @@ export default function Sidebar({ activeView, onViewChange, alertCount }) {
           </svg>
         </div>
         <div>
-          <div className="sidebar-brand">TraceNet</div>
+          <div className="sidebar-brand">TraceFlux</div>
           <div className="sidebar-sub">Financial Interdiction</div>
         </div>
       </div>

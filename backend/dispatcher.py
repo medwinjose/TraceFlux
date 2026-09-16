@@ -1,5 +1,5 @@
 """
-TraceNet - Freeze & Alert Dispatcher
+TraceFlux - Freeze & Alert Dispatcher
 Owner: Systems/Backend
 Turns tag propagation events and high risk scores into structured alerts
 ready to be dispatched to banks and pushed to the live dashboard WebSocket.
