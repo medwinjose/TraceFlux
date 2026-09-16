@@ -1,5 +1,11 @@
 # TraceFlux — Real-Time Cross-Institution Fraud Tracing & Interdiction Rail
 
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi)
+![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)
+![Tests: Passing](https://img.shields.io/badge/Tests-Passing-success.svg?style=flat-square)
+
 > **Scope note**: TraceFlux is a hackathon-grade prototype, not a production deployment. Data is synthetic, the graph is in-memory, and the "cryptographic evidence chain" is a local HMAC hash chain rather than a distributed ledger. The Design Decisions section below spells out exactly what's simulated for the demo and what a production rail would need instead.
 >
 > Live demo: [traceflux.vercel.app](https://traceflux.vercel.app/)
