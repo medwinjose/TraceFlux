@@ -6,7 +6,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)
 ![Tests: Passing](https://img.shields.io/badge/Tests-Passing-success.svg?style=flat-square)
 
-> **Scope note**: TraceFlux is a hackathon-grade prototype, not a production deployment. Data is synthetic, the graph is in-memory, and the "cryptographic evidence chain" is a local HMAC hash chain rather than a distributed ledger. The Design Decisions section below spells out exactly what's simulated for the demo and what a production rail would need instead.
+> **Scope note**: TraceFlux is an experimental prototype, not a production deployment. Data is synthetic, the graph is in-memory, and the "cryptographic evidence chain" is a local HMAC hash chain rather than a distributed ledger. The Design Decisions section below spells out exactly what's simulated for the demo and what a production rail would need instead.
 >
 > Live demo: [traceflux.vercel.app](https://traceflux.vercel.app/)
 
@@ -43,7 +43,7 @@ The FastAPI rail sits at the center of every write: a fraud report fans out to t
 | Decision (prototype) | Why, for a demo | Production equivalent |
 | :--- | :--- | :--- |
 | **In-memory TransactionGraph** | Zero-dependency local setup, sub-millisecond BFS on a 49-node graph | Neo4j / Memgraph cluster, or a graph layer over a distributed store |
-| **Single FastAPI process** | Simplest possible local run for judges | Kafka (or similar) event rail feeding stateless scoring workers, horizontally scaled |
+| **Single FastAPI process** | Simplest possible local run for demonstration | Kafka (or similar) event rail feeding stateless scoring workers, horizontally scaled |
 | **In-process HMAC hash chain** | Demonstrates tamper-evidence without external infra | Append-only ledger (e.g. a permissioned blockchain or write-once log service) shared across institutions |
 | **Synthetic data generator (`simulate.py`)** | No real transaction data needed to demo | Streaming ingestion from each institution's core banking system via a standardized event schema |
 | **Single WebSocket hub** | Fine for one dashboard, one demo session | Pub/sub fan-out (Kafka/Redis Streams) to many concurrent institutional dashboards |
@@ -83,7 +83,7 @@ cd frontend
 npm install
 npm run dev
 ```
-> For a live demo in front of judges, use `docker compose up` or `npm run build && npm run preview` rather than `npm run dev` — the dev server is fine for iterating but not for a polished walkthrough.
+> For a live presentation or demo, use `docker compose up` or `npm run build && npm run preview` rather than `npm run dev` — the dev server is fine for iterating but not for a polished walkthrough.
 
 ## Component Architecture
 ```text

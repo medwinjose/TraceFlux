@@ -40,7 +40,7 @@ export default function SupportView() {
     { category: "Technical & ML Mechanics",
       q: "What is the Evidence Chain and why is it tamper-evident?", a: "The Evidence Chain is an append-only ledger of all freeze events. Every record is hash-chained to the previous one and HMAC-signed, ensuring no actor can maliciously alter or erase a freeze record without detection." },
     { category: "Technical & ML Mechanics",
-      q: "How does TraceFlux explain its ML decisions to human judges?", a: "TraceFlux features a Plain-English Translator. Instead of dumping raw ML tensors, it converts feature contributions into clear, legally defensible sentences for compliance officers." },
+      q: "How does TraceFlux explain its ML decisions to human reviewers?", a: "TraceFlux features a Plain-English Translator. Instead of dumping raw ML tensors, it converts feature contributions into clear, legally defensible sentences for compliance officers." },
     { category: "Technical & ML Mechanics",
       q: "How does the system scale to handle billions of transactions?", a: "Graph operations are localized. When tracing fraud, TraceFlux only traverses the localized subgraph connected to the origin node, allowing massive horizontal scaling for the wider network." },
     

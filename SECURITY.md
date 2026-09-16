@@ -2,7 +2,7 @@
 
 ## TraceFlux Prototype Security Considerations
 
-**TraceFlux is a hackathon-grade prototype and is NOT designed for production deployment in its current state.**
+**TraceFlux is an experimental prototype and is NOT designed for production deployment in its current state.**
 
 It was built to demonstrate real-time fraud propagation and behavioral ML scoring concepts. The following security implementations are simulated and intentionally bypass standard enterprise security practices for the sake of demo simplicity.
 
