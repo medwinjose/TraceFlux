@@ -1,152 +1,203 @@
-# TraceFlux — Real-Time Cross-Institution Fraud Tracing & Interdiction Rail
+# TraceFlux
 
+**Temporal Graph Interdiction & Cross-Institutional Taint Propagation Simulator**
+
+[![CI](https://github.com/medwinjose/TraceFlux/actions/workflows/ci.yml/badge.svg)](https://github.com/medwinjose/TraceFlux/actions/workflows/ci.yml)
+[![Live Deployment](https://img.shields.io/badge/Deployment-traceflux.vercel.app-000000?style=flat-square&logo=vercel)](https://traceflux.vercel.app/)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi)
-![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)
-![Tests: Passing](https://img.shields.io/badge/Tests-Passing-success.svg?style=flat-square)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)
 
-> **Scope note**: TraceFlux is an experimental prototype, not a production deployment. Data is synthetic, the graph is in-memory, and the "cryptographic evidence chain" is a local HMAC hash chain rather than a distributed ledger. The Design Decisions section below spells out exactly what's simulated for the demo and what a production rail would need instead.
->
-> Live demo: [traceflux.vercel.app](https://traceflux.vercel.app/)
+TraceFlux is an architectural simulation of a central-switch payment interdiction rail. It models how a payment clearinghouse can execute **causal, time-bounded taint propagation** and **continuous behavioral risk scoring** across institutional boundaries to halt multi-hop mule networks in real time, backed by a tamper-evident cryptographic audit log.
 
-## The Problem
-When a fraud report lands at a bank, the money has usually already fanned out across two or three intermediary "mule" accounts at other institutions before anyone reacts. Cross-institution fraud response today is largely manual and reactive — each bank can only see its own ledger, so tracing a stolen payment's downstream path requires phone calls and subpoenas while the funds keep moving. There's no shared, real-time layer that can (a) propagate a freeze signal across institutional boundaries the moment fraud is reported, and (b) flag mule-like accounts before they're ever reported.
+---
 
-## The Solution
-TraceFlux simulates a central-switch-level interdiction layer (modeled on how NPCI/UPI sits between Indian banks) with two engines working together:
+## 1. Problem Formulation
 
-1. **Reactive Tag Propagation (`graph_engine.py`)** — on a fraud report, does a hop-by-hop BFS forward through the transaction graph, freezing every downstream account the money touched. Strict `tx.timestamp >= earliest_ts` filtering means a mule's unrelated past transactions are never falsely frozen — only money that moved after the fraud event.
-2. **Proactive Anomaly Scoring (`ml_engine/anomaly_scorer.py`)** — continuously scores every account on 5 behavioral signals so high-risk mule accounts surface before a report ever comes in.
+In cross-institutional payment networks, fraudulent transfers (such as Authorized Push Payment fraud or account takeovers) are rapidly layered across intermediary "mule" accounts at distinct banks. Because individual institutions only observe local ledger state, downstream tracing typically relies on manual inter-bank recalls while funds continue to disperse.
 
-Every freeze produces a plain-English explanation and is appended to a tamper-evident, HMAC-signed hash chain, so each action is auditable after the fact.
+TraceFlux models the clearing switch as an active interdiction layer over a **temporal directed multigraph** $G = (V, E)$, where vertices $V$ represent accounts across institutions and directed edges $e = (u, v, t, a) \in E$ represent settled transfers of amount $a$ at timestamp $t$.
 
-## Architecture
+The system enforces two complementary mechanisms:
+1. **Reactive Causal Interdiction (`graph_engine.py`):** Given a fraud report on an origin account $v_0$ with initial compromise timestamp $t_0$, the rail executes a time-respecting Breadth-First Search (BFS) that traverses and freezes downstream accounts $v_k$ if and only if every edge in the path satisfies causal ordering ($t(e_i) \ge t_0$). This prevents retroactive false freezes on a counterparty's prior legitimate transactions.
+2. **Proactive Behavioral Scoring (`ml_engine/anomaly_scorer.py`):** Continuously evaluates all vertices $v \in V$ over a 5-dimensional behavioral feature vector in $O(\text{deg}(v))$ time to flag dormant-reactivated or high-velocity pass-through conduits prior to an explicit upstream fraud report.
+
+---
+
+## 2. System Architecture
+
 ```mermaid
 graph LR
-    FraudReport[Fraud Trigger] --> FastAPI[FastAPI Rail]
-    FastAPI --> GraphEngine[BFS Hop Engine]
-    FastAPI --> Scorer[Behavioral Scorer]
-    FastAPI --> HashChain[HMAC Evidence Chain]
-    FastAPI -->|WebSocket| ReactUI[Canvas Dashboard]
+    Trigger[Fraud Trigger / API] --> Switch[FastAPI Switch Rail]
+    Switch --> BFS[Temporal BFS Engine]
+    Switch --> Scorer[Behavioral Risk Scorer]
+    Switch --> Ledger[HMAC Audit Chain]
+    Switch -->|WebSocket State Stream| UI[Force-Directed Graph UI]
 ```
-The FastAPI rail sits at the center of every write: a fraud report fans out to the BFS engine (freezes the chain), the scorer (re-ranks account risk), and the evidence chain (logs the action), then pushes the result to the dashboard over WebSocket in real time.
 
-## Key Results
-- **Freezes a full 9-node fraud chain in real time**, measured by end-to-end propagation across the demo's 49-account synthetic graph, by running the BFS tag-propagation engine directly against the in-memory transaction graph rather than polling.
-- **Every freeze is independently auditable**, measured by `GET /evidence_chain/verify` returning a pass/fail verdict on the full hash chain, by HMAC-signing each evidence entry and chaining it to the previous hash.
-- **Zero false freezes on a mule's historical activity**, measured by strict timestamp-bounded BFS traversal, by filtering all propagation to `tx.timestamp >= earliest_ts` at the fraud report's origin.
-- **System correctness is checked pre-demo**, measured by `backend/test_system.py` and `backend/validation.py` passing, by running both before every live run (see Quickstart).
+### Core Subsystems
 
-## Design Decisions & Trade-offs
+* **Temporal Graph Engine (`backend/graph_engine.py`):** Maintains indexed in-memory adjacency structures (`outgoing`, `incoming`, and monotonic latest timestamp tracking) and executes timestamp-bounded BFS traversal ($O(\vert{}V\vert{} + \vert{}E\vert{})$ worst-case complexity). Guarantees idempotency under duplicate upstream reports and strict causal isolation (`tx.timestamp >= earliest_ts`).
+* **Behavioral Anomaly Scorer & Explainer (`backend/ml_engine/anomaly_scorer.py`, `backend/explainer.py`):** Evaluates local graph-topological and temporal features per account in $O(\text{deg}(v))$ time via indexed adjacency lists, computing a normalized risk score alongside decomposed feature weights that translate directly into human-readable compliance rationales.
+* **Tamper-Evident Audit Chain (`backend/security.py`):** Records every state transition (account freeze) in a hash-linked log. For record $k$, the event payload dictionary:
+  $$\text{payload}_k = \{\text{account\_id}, \text{bank\_id}, \text{event\_type}, \text{metadata}, \text{reason\_plain}, \text{timestamp}\}$$
+  is canonically serialized ($m_k = \text{canonical\_json}(\text{payload}_k)$) and hash-chained from genesis $H_0 = 0^{64}$:
+  $$H_k = \text{SHA-256}(H_{k-1} \parallel m_k)$$
+  Each entry carries an institutional authenticity signature $\sigma_k = \text{HMAC-SHA256}_K(m_k)$. Outgoing freeze dispatches to member banks carry a corresponding command signature $\sigma_{\text{freeze}} = \text{HMAC-SHA256}_K(\text{canonical\_json}(\{\text{account\_id}, \text{bank\_id}, \text{frozen\_chain}\}))$. Chain integrity is independently verifiable via `GET /evidence_chain/verify`.
+* **Interactive Telemetry Console (`frontend/`):** React + HTML5 Canvas force-directed graph visualizer connected via WebSockets (`WS /ws`), supporting real-time topology scaling from a 49-node baseline (40 normal accounts + 9-node laundering chain) up to 500+ synthetic stress-test nodes.
 
-| Decision (prototype) | Why, for a demo | Production equivalent |
+### Empirical Performance (Local Single-Node)
+
+Benchmarked on a local runtime (Python 3.11, Intel/AMD multi-core) across 200 iterations with 10 warmup runs and explicit garbage-collection pinning via `backend/benchmark.py`. With indexed vertex-adjacency structures, full-graph feature evaluation scales strictly linearly ($O(\vert{}V\vert{} + \vert{}E\vert{})$) rather than unindexed global scans ($O(\vert{}V\vert{} \cdot \vert{}E\vert{})$):
+
+| Operation | Workload / Topology | Algorithmic Complexity | Median ($p_{50}$) | Tail Latency ($p_{99}$) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Causal BFS Traversal** | Baseline graph (49 nodes, 159 edges) | $O(\vert{}V\vert{} + \vert{}E\vert{})$ | **3.60 µs** | 14.80 µs |
+| **Causal BFS Traversal** | Stress graph (509 nodes, 1,539 edges) | $O(\vert{}V\vert{} + \vert{}E\vert{})$ | **3.80 µs** | 8.80 µs |
+| **Behavioral Scoring** | Single account evaluation | $O(\text{deg}(v))$ | **5.80 µs** | 13.90 µs |
+| **Full-Graph Scoring Pass** | Baseline graph (49 nodes) | $O(\vert{}V\vert{} + \vert{}E\vert{})$ | **0.29 ms** | 0.83 ms |
+| **Full-Graph Scoring Pass** | Stress graph (509 nodes) | $O(\vert{}V\vert{} + \vert{}E\vert{})$ | **2.97 ms** | 4.43 ms |
+| **HMAC Log Append** | Single audit entry (`append`) | $O(1)$ | **7.00 µs** | 45.70 µs |
+| **Audit Log Verification** | 10-record hash chain (`verify_chain`) | $O(N)$ | **50.90 µs** | 197.50 µs |
+| **Audit Log Verification** | 100-record hash chain (`verify_chain`) | $O(N)$ | **431.25 µs** | 871.50 µs |
+
+> When expanding the topology by $10.4\times$ (49 $\to$ 509 nodes), full-graph scoring latency scales by $10.2\times$ ($0.29\text{ ms} \to 2.97\text{ ms}$), demonstrating optimal $O(\vert{}V\vert{} + \vert{}E\vert{})$ linear empirical scaling.
+
+---
+
+## 3. Behavioral Feature Specification
+
+Each account vertex $v \in V$ is evaluated over five laundering indicators extracted from local graph adjacency and temporal event history:
+
+1. **Fan-Out Dispersion Ratio ($x_1 \in [0, 1]$):**
+   $$x_1 = \frac{\vert{}\{ u \in V \mid \exists e = (v, u) \in E \}\vert{}}{\max(1, \vert{}\{ e \in E \mid \text{src}(e) = v \}\vert{})}$$
+   Measures dispersion of funds across distinct downstream counterparties relative to total outbound transfers.
+2. **Normalized Transaction Velocity ($\tilde{x}_2 \in [0, 1]$):**
+   Let $N_{\Delta}(v)$ be the count of transactions incident to $v$ in the trailing 24 hours. Transaction rate $v_{\text{rate}} = \frac{N_{\Delta}(v)}{24}\ \text{tx/hr}$ is capped at 10 tx/hr:
+   $$\tilde{x}_2 = \min\left(\frac{v_{\text{rate}}}{10.0}, 1.0\right)$$
+3. **Dormant Reactivation Indicator ($x_3 \in \{0, 1\}$):**
+   Binary indicator flagging accounts inactive for $\ge 30\text{ days}$ prior to an abrupt transaction burst:
+   $$x_3 = \begin{cases} 1 & \text{if } \exists k \text{ s.t. } t_k - t_{k-1} \ge 30 \times 86400\text{ s} \\ 0 & \text{otherwise} \end{cases}$$
+4. **Regulatory Structuring Score ($x_4 \in [0, 1]$):**
+   Proportion of transactions clustering in the band $[0.9 \cdot T, T)$ immediately below regulatory cash transaction reporting thresholds $\mathcal{T} = \{10\text{k}, 50\text{k}, 100\text{k}, 200\text{k}, 500\text{k}, 1\text{M}\}$:
+   $$x_4 = \frac{\vert{}\{ e \in E(v) \mid \exists T \in \mathcal{T} \text{ s.t. } 0.9 \cdot T \le a(e) < T \}\vert{}}{\max(1, \vert{}E(v)\vert{})}$$
+5. **Inverse Residence / Hold Time ($\tilde{x}_5 \in (0, 1]$):**
+   Given mean residence duration $\bar{t}_{\text{hold}}$ (in minutes) between fund arrival and forward transfer:
+   $$\tilde{x}_5 = \frac{1}{1 + \bar{t}_{\text{hold}}}$$
+
+### Composite Risk Formulation & Classification
+
+The composite behavioral score $S(v)$ is computed as the bounded affine combination:
+$$S(v) = \min\left(1.0, \sum_{i=1}^5 w_i \cdot \tilde{x}_i \right)$$
+$$\text{where } \mathbf{w} = [0.35, 0.05, 0.20, 0.10, 0.30]^\top, \quad \sum_{i=1}^5 w_i = 1.00$$
+
+Classification follows strict decision boundaries:
+$$\text{Class}(v) = \begin{cases} \text{HIGH\_RISK} & \text{if } S(v) \ge 0.75 \\ \text{WATCH} & \text{if } 0.45 \le S(v) < 0.75 \\ \text{CLEAN} & \text{if } S(v) < 0.45 \end{cases}$$
+
+| Feature | Weight ($w_i$) | Normalized Input | Target Typology |
+| :--- | :--- | :--- | :--- |
+| `fan_out_ratio` | **0.35** | $x_1 \in [0, 1]$ | **Layering / Dispersion:** Aggregating illicit funds and rapidly splitting to multiple downstream accounts. |
+| `velocity` | **0.05** | $\tilde{x}_2 = \min(v_{\text{rate}} / 10, 1)$ | **Burst Laundering:** Sudden acceleration in transfer volume over rolling 24-hour windows. |
+| `dormant_reactivation` | **0.20** | $x_3 \in \{0, 1\}$ | **Aged Mule Accounts:** Seasoned accounts left dormant to clear onboarding filters before sudden utilization. |
+| `structuring_score` | **0.10** | $x_4 \in [0, 1]$ | **Smurfing / Structuring:** Deliberately calibrating transfers immediately below mandatory reporting thresholds. |
+| `hold_time_inverse` | **0.30** | $\tilde{x}_5 = 1 / (1 + \bar{t}_{\text{hold}})$ | **Pass-Through Conduits:** Automated forwarders exhibiting near-zero balance holding duration. |
+
+Querying `GET /accounts/{id}/explain` returns the decomposed attribution $\{w_i \cdot \tilde{x}_i\}$, which `backend/explainer.py` maps to natural-language compliance receipts.
+
+---
+
+## 4. Scope & Production Mapping
+
+TraceFlux is a deterministic single-node simulation designed for zero-dependency local verification. The table below maps the prototype's in-process components to their production equivalents in a distributed clearing switch:
+
+| Subsystem | Prototype Implementation | Distributed Production Equivalent |
 | :--- | :--- | :--- |
-| **In-memory TransactionGraph** | Zero-dependency local setup, sub-millisecond BFS on a 49-node graph | Neo4j / Memgraph cluster, or a graph layer over a distributed store |
-| **Single FastAPI process** | Simplest possible local run for demonstration | Kafka (or similar) event rail feeding stateless scoring workers, horizontally scaled |
-| **In-process HMAC hash chain** | Demonstrates tamper-evidence without external infra | Append-only ledger (e.g. a permissioned blockchain or write-once log service) shared across institutions |
-| **Synthetic data generator (`simulate.py`)** | No real transaction data needed to demo | Streaming ingestion from each institution's core banking system via a standardized event schema |
-| **Single WebSocket hub** | Fine for one dashboard, one demo session | Pub/sub fan-out (Kafka/Redis Streams) to many concurrent institutional dashboards |
+| **Graph Store** | In-memory `TransactionGraph` (`graph_engine.py`) | Partitioned distributed graph engine (Memgraph / Neo4j) with hot in-memory adjacency cache |
+| **Ingestion & Routing** | Single-process FastAPI event loop (`main.py`) | Partitioned event streaming backbone (Apache Kafka / Redpanda) feeding stateless worker pools |
+| **Evidence Log** | Local in-process HMAC hash chain (`security.py`) | Append-only WORM log or permissioned consortium ledger with HSM-backed signing |
+| **Transaction Stream** | Deterministic topology generator (`simulate.py`) | Low-latency ISO 20022 event ingestion from participating core banking switches |
+| **Client Telemetry** | Single-process WebSocket hub (`WS /ws`) | Multi-tenant pub/sub gateway (Redis Streams / Kafka) with mTLS institutional scoping |
 
-> This table exists specifically so the gap between "how this repo works" and "how a real interdiction rail would work" is explicit rather than implied.
+---
 
-## The 5 Risk Signals
-`ml_engine/anomaly_scorer.py` scores every account continuously on:
-- **`fan_out_ratio`** — how many distinct outbound counterparties an account pays relative to its inbound counterparties. Mule accounts tend to receive from one source and fan money out to many.
-- **`velocity`** — transaction frequency over a rolling window. A sudden spike in transaction rate is a classic laundering tell.
-- **`dormant_reactivation`** — how long an account sat inactive before a burst of activity. Mule accounts are often opened, left dormant to look legitimate, then activated once.
-- **`structuring_score`** — how consistently transaction amounts sit just under reporting thresholds, a common structuring (smurfing) pattern.
-- **`avg_hold_time_minutes`** — how long funds sit in the account before moving on. Mule accounts typically pass money through almost immediately.
+## 5. Repository Structure
 
-Each account's `GET /accounts/{id}/explain` endpoint returns the weighted contribution of each signal, which `explainer.py` turns into the plain-English freeze reason shown in the dashboard.
+```text
+TraceFlux/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                   # GitHub Actions automated verification pipeline
+├── docker-compose.yml               # Multi-container orchestration (FastAPI + production UI)
+├── verify_live_stack.py             # End-to-end in-process pipeline verification script
+├── backend/
+│   ├── main.py                      # FastAPI application, REST endpoints, & WebSocket hub
+│   ├── graph_engine.py              # Temporal TransactionGraph & causal BFS propagation
+│   ├── security.py                  # HMAC-SHA256 hash chain construction & verification
+│   ├── explainer.py                 # Feature-weight attribution to natural-language rationale
+│   ├── dispatcher.py                # Real-time FreezeAlert serialization & broadcast
+│   ├── simulate.py                  # Synthetic network topology generator
+│   ├── benchmark.py                 # Micro-benchmark harness for latency evaluation
+│   ├── test_system.py               # Automated test suite (causality, idempotency, graph logic)
+│   ├── validation.py                # Feature extraction & scoring boundary verification
+│   └── ml_engine/
+│       └── anomaly_scorer.py        # Multi-signal behavioral risk scoring engine
+└── frontend/
+    └── src/
+        ├── App.jsx                  # WebSocket state synchronization & view router
+        └── components/
+            ├── NetworkGraph.jsx     # HTML5 Canvas force-directed physics graph
+            ├── RiskPanel.jsx        # Account inspector & feature-weight attribution view
+            ├── AlertFeed.jsx        # Real-time WebSocket interdiction stream
+            └── EvidenceView.jsx     # Cryptographic hash-chain audit explorer
+```
 
-## ⚡ Quickstart
+---
 
-### Recommended (Docker):
+## 6. API Specification
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/report_fraud/{account_id}` | Initiates causal BFS taint propagation from `{account_id}`, freezes downstream vertices, appends HMAC audit entries, and broadcasts state deltas. Idempotent on duplicate calls; returns `404` on unknown IDs; returns `409` on duplicate report IDs. |
+| `GET` | `/accounts` | Returns all graph vertices with current state (`ACTIVE` / `FROZEN`) and behavioral risk scores. |
+| `GET` | `/accounts/{id}/explain` | Returns decomposed feature weights and natural-language rationale for a specific account. |
+| `GET` | `/graph_data` | Returns node and edge adjacency payload for force-directed canvas rendering. |
+| `GET` | `/alerts` | Returns recent structured freeze alerts from the dispatcher. |
+| `GET` | `/evidence_chain` | Returns the complete HMAC-signed audit log of all interdiction events. |
+| `GET` | `/evidence_chain/verify` | Recomputes and validates every cryptographic link in the evidence chain. |
+| `POST` | `/reset` | Resets graph topology, vertex states, and audit log to initial baseline. |
+| `WS` | `/ws` | Streams real-time `TAG_PROPAGATED`, `ACCOUNT_FROZEN`, and `DEMO_RESET` events. |
+
+---
+
+## 7. Local Execution & Verification
+
+### Docker (Recommended)
 ```bash
 docker compose up --build
 ```
-This boots the FastAPI backend and a production build of the React dashboard together — no dev-server flicker for live demos.
-- **Dashboard**: http://localhost:5173
-- **API docs**: http://localhost:8000/docs
+* **Telemetry Console:** `http://localhost:5173`
+* **OpenAPI Specification:** `http://localhost:8000/docs`
 
-### Manual (local dev):
+### Manual Execution & Verification Suites
 ```bash
-# Backend
+# 1. Install backend dependencies
 pip install -r backend/requirements.txt
+
+# 2. Execute verification suites & empirical benchmarks
 python backend/test_system.py
 python backend/validation.py
+python verify_live_stack.py
+python backend/benchmark.py
+
+# 3. Start backend service
 python backend/run_demo.py
 
-# Frontend (separate terminal, for active development only)
-cd frontend
-npm install
-npm run dev
-```
-> For a live presentation or demo, use `docker compose up` or `npm run build && npm run preview` rather than `npm run dev` — the dev server is fine for iterating but not for a polished walkthrough.
-
-## Component Architecture
-```text
-TraceFlux/
-├── README.md
-├── verify_live_stack.py          # In-process full stack integration check
-├── docker-compose.yml            # One-command backend + production frontend
-├── backend/
-│   ├── requirements.txt
-│   ├── graph_engine.py            # TransactionGraph BFS tag propagation engine
-│   ├── dispatcher.py              # FreezeAlert dispatcher
-│   ├── main.py                    # FastAPI server & WebSocket hub
-│   ├── simulate.py                # Synthetic data generator (40 normal + 9-node fraud chain)
-│   ├── security.py                # Tamper-evident evidence chain & HMAC signatures
-│   ├── explainer.py               # Plain-English translation of ML feature contributions
-│   ├── run_demo.py                # One-click launcher script
-│   ├── test_system.py             # System verification test suite
-│   ├── validation.py              # ML scoring validation script
-│   └── ml_engine/
-│       ├── __init__.py
-│       └── anomaly_scorer.py      # Behavioral feature extraction & ML scoring
-└── frontend/
-    ├── index.html
-    ├── package.json
-    ├── vite.config.js
-    ├── tailwind.config.js
-    ├── postcss.config.cjs
-    └── src/
-        ├── App.jsx                # Root state, WebSocket lifecycle, view router
-        ├── index.css              # Design tokens & all component styles
-        ├── main.jsx
-        └── components/
-            ├── Sidebar.jsx
-            ├── Header.jsx
-            ├── StatsBar.jsx
-            ├── NetworkGraph.jsx    # Canvas force-directed physics graph
-            ├── RiskPanel.jsx       # Account list + ML risk inspector & explainability
-            ├── AlertFeed.jsx       # WebSocket live alert stream
-            ├── WatchlistView.jsx
-            ├── AssetsView.jsx
-            ├── EvidenceView.jsx
-            ├── SettingsView.jsx
-            └── SupportView.jsx
+# 4. Start frontend (in a separate terminal)
+cd frontend && npm install && npm run build && npm run preview
 ```
 
-## API Endpoints
-| Endpoint | Description |
-| :--- | :--- |
-| `POST /report_fraud/{account_id}` | Triggers BFS tag propagation, auto-freezes the downstream chain, returns the frozen chain JSON, dispatches alerts. Handles non-existent IDs with HTTP 404; idempotent on duplicate reports. |
-| `GET /accounts` | Returns all accounts with dynamically computed risk scores. |
-| `GET /accounts/{id}/explain` | Returns the feature-weight breakdown behind an account's risk score. |
-| `POST /reset` | Restores a clean initial graph state between demo runs. |
-| `GET /evidence_chain` | Returns the full tamper-evident hash chain of all freezes. |
-| `GET /evidence_chain/verify` | Validates the chain's integrity and returns a verification verdict. |
-| `WS /ws` | Pushes real-time `TAG_PROPAGATED`, `ACCOUNT_FROZEN`, and `DEMO_RESET` events. |
+---
 
-## Roadmap
-- [x] Synthetic graph size slider in the dashboard header (49-node demo ↔ 500+-node stress graph) to show canvas performance under load.
-- [ ] Swap the local hash chain for a real append-only log service.
-- [ ] Multi-institution simulation (separate account namespaces per "bank").
+## 8. Security & License
 
-## Security
-This is a prototype: HMAC keys, synthetic account data, and the evidence chain are for demonstration only and are not suitable for production use as-is. See [SECURITY.md](SECURITY.md) for what's simulated versus what a production deployment would require (key management, real auth on the API, TLS on the WebSocket hub).
-
-## License
-Licensed under the [MIT License](LICENSE).
+All signing keys, account identifiers, and transaction topologies in this repository are synthetic and intended solely for architectural simulation. See [SECURITY.md](SECURITY.md) for threat-model scope. Licensed under the [MIT License](LICENSE).

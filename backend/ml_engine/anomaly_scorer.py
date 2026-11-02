@@ -29,41 +29,42 @@ WEIGHTS = {
 
 def compute_features(graph, account_id: str) -> AccountFeatures:
     """
-    `graph` is Medwin's TransactionGraph object — it has .accounts (dict of
-    account_id -> Account) and .outgoing (dict of account_id -> list of Transaction).
-    Account has: account_id, bank_id, is_flagged, freeze_status, risk_score, created_at.
-    Transaction has: tx_id, src_account, dst_account, amount, timestamp, trace_tag.
-    Derive all five features below from these two structures — do not assume any other
-    fields exist.
+    Computes local behavioral features in O(deg(v)) complexity using indexed
+    inbound and outbound adjacency structures.
     """
     account = graph.accounts[account_id]
     outgoing_txs = graph.outgoing.get(account_id, [])
     
-    # Retrieve all transactions in the graph to find incoming transactions
-    all_txs = list(graph.transactions.values())
-    incoming_txs = [tx for tx in all_txs if tx.dst_account == account_id]
-    
+    # O(1) indexed lookup for inbound transactions
+    if hasattr(graph, "incoming"):
+        incoming_txs = graph.incoming.get(account_id, [])
+    else:
+        incoming_txs = [tx for tx in graph.transactions.values() if tx.dst_account == account_id]
+        
+    incident_txs = incoming_txs + outgoing_txs
+
     # 1. Fan-out ratio: unique recipients / total outgoing transactions
     unique_recipients = len({tx.dst_account for tx in outgoing_txs})
     total_outgoing = len(outgoing_txs)
     fan_out_ratio = unique_recipients / total_outgoing if total_outgoing > 0 else 0.0
     
     # 2. Velocity: transactions per hour, recent 24-hour window
-    if all_txs:
-        max_ts = max(tx.timestamp for tx in all_txs)
-    else:
-        max_ts = time.time()
+    latest_ts = getattr(graph, "latest_timestamp", 0.0)
+    if latest_ts <= 0.0:
+        if graph.transactions:
+            latest_ts = max(tx.timestamp for tx in graph.transactions.values())
+        else:
+            latest_ts = time.time()
         
-    recent_window_start = max_ts - 24 * 3600
+    recent_window_start = latest_ts - 24 * 3600
     recent_txs = [
-        tx for tx in all_txs
-        if (tx.src_account == account_id or tx.dst_account == account_id)
-        and tx.timestamp >= recent_window_start
+        tx for tx in incident_txs
+        if tx.timestamp >= recent_window_start
     ]
     velocity = len(recent_txs) / 24.0
     
     # 3. Dormant reactivation: inactive 30+ days then suddenly active
-    tx_timestamps = sorted([tx.timestamp for tx in (incoming_txs + outgoing_txs)])
+    tx_timestamps = sorted([tx.timestamp for tx in incident_txs])
     created_at = getattr(account, 'created_at', None)
     
     if created_at is not None:
@@ -80,11 +81,11 @@ def compute_features(graph, account_id: str) -> AccountFeatures:
     # 4. Structuring score: proportion of transactions just under reporting thresholds
     # Common Indian banking thresholds: ₹10,000, ₹50,000, ₹100,000, ₹200,000, ₹500,000, ₹1,000,000
     thresholds = [10000.0, 50000.0, 100000.0, 200000.0, 500000.0, 1000000.0]
-    total_tx_count = len(incoming_txs) + len(outgoing_txs)
+    total_tx_count = len(incident_txs)
     
     structured_count = 0
     if total_tx_count > 0:
-        for tx in (incoming_txs + outgoing_txs):
+        for tx in incident_txs:
             for T in thresholds:
                 if 0.9 * T <= tx.amount < T:
                     structured_count += 1
@@ -112,12 +113,8 @@ def compute_features(graph, account_id: str) -> AccountFeatures:
     elif sorted_in:
         # Final node in the chain has incoming funds but no outgoing ones yet.
         # We calculate the hold time since the last incoming transaction relative to the latest transaction in the graph.
-        if all_txs:
-            latest_graph_ts = max(tx.timestamp for tx in all_txs)
-        else:
-            latest_graph_ts = time.time()
         last_in_ts = sorted_in[-1].timestamp
-        diff_min = (latest_graph_ts - last_in_ts) / 60.0
+        diff_min = (latest_ts - last_in_ts) / 60.0
         hold_times.append(diff_min)
             
     if hold_times:

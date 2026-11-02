@@ -38,7 +38,9 @@ class TransactionGraph:
     def __init__(self):
         self.accounts: Dict[str, Account] = {}
         self.outgoing: Dict[str, List[Transaction]] = defaultdict(list)
+        self.incoming: Dict[str, List[Transaction]] = defaultdict(list)
         self.transactions: Dict[str, Transaction] = {}
+        self.latest_timestamp: float = 0.0
         
     def add_account(self, account_id: str, bank_id: str, created_at: Optional[float] = None):
         self.accounts[account_id] = Account(
@@ -50,6 +52,9 @@ class TransactionGraph:
     def record_transaction(self, tx: Transaction):
         self.transactions[tx.tx_id] = tx
         self.outgoing[tx.src_account].append(tx)
+        self.incoming[tx.dst_account].append(tx)
+        if tx.timestamp > self.latest_timestamp:
+            self.latest_timestamp = tx.timestamp
         
     def report_fraud(self, account_id: str, reported_at: float = None, max_hops: int = 5) -> List[str]:
         reported_at = reported_at or time.time()
