@@ -91,28 +91,7 @@ TraceFlux is a deterministic single-node simulation designed for zero-dependency
 
 ---
 
-## 5. Repository Structure
-
-```text
-TraceFlux/
-├── .github/workflows/ci.yml         # Automated GitHub Actions test pipeline
-├── docker-compose.yml               # Container orchestration (FastAPI + production UI)
-├── verify_live_stack.py             # In-process full-stack integration test
-├── backend/
-│   ├── main.py                      # FastAPI REST endpoints & WebSocket event hub
-│   ├── graph_engine.py              # Indexed temporal graph & causal BFS interdiction
-│   ├── security.py                  # HMAC-SHA256 evidence chain & command signing
-│   ├── explainer.py                 # Feature attribution to compliance rationale
-│   ├── benchmark.py                 # Latency benchmark harness (p50 / p99)
-│   ├── test_system.py               # Causality, idempotency, and graph unit tests
-│   ├── validation.py                # Feature extraction & scoring boundary tests
-│   └── ml_engine/anomaly_scorer.py  # Behavioral risk scoring heuristic
-└── frontend/src/                    # React Canvas UI (NetworkGraph, RiskPanel, EvidenceView)
-```
-
----
-
-## 6. API Specification
+## 5. API Specification
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
@@ -127,7 +106,7 @@ TraceFlux/
 
 ---
 
-## 7. Execution & Verification
+## 6. Execution & Verification
 
 ```bash
 # Option 1: Docker (Recommended)
@@ -144,6 +123,6 @@ cd frontend && npm install && npm run build && npm run preview
 
 ---
 
-## 8. License
+## 7. License
 
 Licensed under the [MIT License](LICENSE).
