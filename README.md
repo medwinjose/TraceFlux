@@ -63,7 +63,7 @@ Benchmarked on a local runtime (Python 3.11, Intel/AMD multi-core) across 200 it
 
 To maintain transparent, audit-ready compliance without statistical opacity, `anomaly_scorer.py` evaluates an explainable **deterministic linear heuristic baseline** (not a learned statistical model). The composite risk score is computed as:
 $$S(v) = \min\left(1.0, \sum_{i=1}^5 w_i \cdot x_i\right)$$
-with decision boundaries: $\text{HIGH\_RISK}\ (S \ge 0.75)$, $\text{WATCH}\ (0.45 \le S < 0.75)$, and $\text{CLEAN}\ (S < 0.45)$.
+with decision boundaries: `HIGH_RISK` ($S \ge 0.75$), `WATCH` ($0.45 \le S < 0.75$), and `CLEAN` ($S < 0.45$).
 
 | Feature ($x_i$) | Weight ($w_i$) | Formulation / Normalization | Target Typology |
 | :--- | :--- | :--- | :--- |
