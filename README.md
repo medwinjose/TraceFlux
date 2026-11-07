@@ -29,6 +29,8 @@ TraceFlux models the switch as a timestamped transaction graph and acts on a fra
 
 ## Architecture
 
+![TraceFlux architecture: a React dashboard calls one FastAPI process; a fraud report runs a replay check, a time-respecting BFS and, per frozen account, scoring, a written reason, a signed evidence record and an alert, then streams WebSocket events back](docs/architecture.svg)
+
 One FastAPI process holds the whole graph in memory, with inbound and outbound transfer lists per account. `simulate.py` builds a synthetic graph of background accounts plus an injected mule network of 9 accounts (victim, 6 mules over three hops, 2 cash-out accounts). A React dashboard draws the graph on an HTML canvas and animates each freeze from WebSocket events.
 
 A fraud report passes through these steps in `main.py`:
