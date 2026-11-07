@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 
-[Docs](docs/README.md) | [Results](#key-results) | [Limitations](#limitations-and-scope) | [Quick start](#quick-start) | [Cite](#cite)
+[Docs](docs/README.md) | [Results](#key-results) | [Limitations](#limitations-and-scope) | [Quick start](#quick-start)
 
 ## At a glance
 
@@ -115,18 +115,6 @@ Reproduce the latency rows: run `python backend/benchmark.py` five times and com
 - Check HMAC signatures in `GET /evidence_chain/verify`.
 - Seed `simulate.py` so every start produces the same graph.
 - Apply the time filter to the reported account's own outgoing transfers.
-
-## Contributing and security
-
-Report bugs through [GitHub Issues](https://github.com/medwinjose/TraceFlux/issues). Known security gaps and reporting guidance are in [SECURITY.md](SECURITY.md).
-
-## Cite
-
-No DOI or CITATION.cff exists yet. Cite the repository URL and the commit hash used.
-
-## Author and contact
-
-Medwin Jose, Student, VIT Bhopal University. GitHub: [medwinjose](https://github.com/medwinjose).
 
 ## License
 
