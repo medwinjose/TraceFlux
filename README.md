@@ -1,4 +1,6 @@
-# TraceFlux - a single-node simulator that traces stolen funds across banks with a time-ordered graph search and freezes the accounts they reach
+# TraceFlux
+
+A single-node simulator that traces stolen funds across banks with a time-ordered graph search and freezes the accounts they reach.
 
 [![CI](https://github.com/medwinjose/TraceFlux/actions/workflows/ci.yml/badge.svg)](https://github.com/medwinjose/TraceFlux/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
