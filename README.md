@@ -4,20 +4,20 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 
-[Architecture](#architecture) | [Results](#key-results) | [Limitations](#limitations-and-scope) | [Quick start](#quick-start) | [Cite](#cite)
+[Docs](docs/README.md) | [Results](#key-results) | [Limitations](#limitations-and-scope) | [Quick start](#quick-start) | [Cite](#cite)
 
 ## At a glance
 
 - **What:** A clearing-switch simulator. When one account is reported as defrauded, it follows the money forward through later transfers and freezes every account the money reached.
-- **Why it matters:** Each bank sees only its own ledger, so stolen funds can pass through several mule accounts at different banks before anyone traces them.
-- **Headline result:** On the 49-account synthetic graph, one fraud report freezes all 9 injected chain accounts in a median of 4.04 µs (Measured, 200 iterations, Python 3.13, Intel Xeon 2.10 GHz; `python backend/benchmark.py`).
-- **Status:** Research prototype on synthetic data. Last verified 2026-11-07 at commit `1756b4b`.
+- **Why it matters:** Each bank sees only its own ledger. Stolen funds can pass through mule accounts at several banks before anyone traces them.
+- **Headline result:** On the 49-account synthetic graph, one fraud report freezes all 9 injected chain accounts in a median of 4.09 µs (Measured; median of 5 runs of 200 iterations, Intel Xeon 2.10 GHz; [data and command](docs/benchmarks.md)).
+- **Status:** Research prototype on synthetic data. Last verified 2026-11-07 at commit `b6afe08`.
 - **Not in scope:** Real bank data or real-time ingestion; authentication or TLS on the API.
-- **Author:** Medwin Jose, Student, VIT Bhopal University.
+- **Author:** Medwin Jose, Student, VIT Bhopal University. ORCID: TODO.
 
 ## Problem and approach
 
-A fraud report names one account and a time. Funds that left that account then moved hop by hop through other accounts, often at other banks. The simulator keeps every transfer as a timestamped directed edge between accounts. On a report, a breadth-first search follows an account's outgoing transfers only if they happened at or after the time tainted money arrived there, so a mule's older, unrelated payments are not frozen. A separate scorer rates every account on five behavioural signals before any report exists. Every freeze is written to a hash-chained log with an HMAC signature per entry.
+A fraud report names one account and a time. Funds that left that account then moved hop by hop through other accounts, often at other banks. The simulator keeps every transfer as a timestamped directed edge between accounts. On a report, a breadth-first search follows each outgoing transfer made at or after the tainted money arrived. A mule's older, unrelated payments are therefore not frozen. A separate scorer rates every account on five behavioural signals before any report exists. Every freeze is written to a hash-chained log with an HMAC signature per entry.
 
 | Decision | Instead of | Why | Record |
 | --- | --- | --- | --- |
@@ -29,6 +29,8 @@ A fraud report names one account and a time. Funds that left that account then m
 
 ```mermaid
 graph LR
+    accTitle: TraceFlux components
+    accDescr: A fraud report enters the FastAPI app, which calls the BFS engine, the risk scorer and the evidence log, and streams events over a WebSocket to the React graph view.
     Report["POST /report_fraud"] --> API["FastAPI app (main.py)"]
     API --> BFS["Time-ordered BFS (graph_engine.py)"]
     API --> Scorer["Risk scorer (anomaly_scorer.py)"]
@@ -36,19 +38,19 @@ graph LR
     API -->|"WebSocket /ws"| UI["React canvas graph (frontend/)"]
 ```
 
-One FastAPI process holds the whole graph in memory (`TransactionGraph`, with per-account inbound and outbound edge lists). `simulate.py` builds a synthetic graph of background accounts plus a 9-account injected mule network. On a report, `graph_engine.py` runs the BFS (default `max_hops` 3 through the API), `explainer.py` writes a plain-language reason for each freeze, and `security.py` appends one signed record per frozen account. The React frontend draws the graph on an HTML canvas and animates freezes from WebSocket events. The scorer weights are `fan_out_ratio` 0.35, `hold_time_inverse` 0.30, `dormant_reactivation` 0.20, `structuring_score` 0.10 and `velocity` 0.05; scores of 0.75 and above are `HIGH_RISK`, 0.45 and above `WATCH`.
+One FastAPI process holds the whole graph in memory (`TransactionGraph`, with per-account inbound and outbound edge lists). `simulate.py` builds a synthetic graph of background accounts plus a 9-account injected mule network. On a report, `graph_engine.py` runs the BFS (default `max_hops` 3 through the API). `explainer.py` writes a plain-language reason for each freeze. `security.py` appends one signed record per frozen account. The React frontend draws the graph on an HTML canvas and animates freezes from WebSocket events. The scorer weights are `fan_out_ratio` 0.35, `hold_time_inverse` 0.30, `dormant_reactivation` 0.20, `structuring_score` 0.10 and `velocity` 0.05; scores of 0.75 and above are `HIGH_RISK`, 0.45 and above `WATCH`.
 
 ## Key results
 
 | Claim | Setup | Evidence type | Reproduce |
 | --- | --- | --- | --- |
-| A report freezes the downstream account but not the recipient of an earlier, unrelated transfer | 4-account hand-built graph | Test (CI) | `cd backend && python test_system.py` |
-| BFS freeze latency: median 4.04 µs, p99 14.88 µs (49 nodes, 159 edges); median 4.23 µs, p99 17.88 µs (509 nodes, 1,539 edges) | 9 accounts frozen per run, `max_hops` 5; 200 iterations after 10 warm-ups; 1 benchmark run; Python 3.13, Intel Xeon 2.10 GHz, 4 vCPU, Linux | Measured | `python backend/benchmark.py` |
-| Full-graph scoring: median 0.26 ms (49 nodes), 2.29 ms (509 nodes) | Same as above | Measured | `python backend/benchmark.py` |
-| Hash-chain check: median 33.69 µs for 10 records, 345.11 µs for 100 | Same as above | Measured | `python backend/benchmark.py` |
-| 5 of 5 injected chain accounts score `WATCH` or `HIGH_RISK`; 40 of 40 background accounts score `CLEAN` | Separate 45-account graph in `validation.py`, seed 42 | Simulation | `cd backend && python validation.py` |
+| A report freezes the downstream account and not the recipient of an earlier, unrelated transfer; 4 of 4 tests pass | 4-account hand-built graph | Test (CI, Python 3.11) | `cd backend && python -m pytest test_system.py`; [output](docs/validation.md) |
+| BFS freeze latency, median of 5 per-run medians: 4.09 µs (49 nodes, 159 edges), 4.55 µs (509 nodes, 1,539 edges) | 9 accounts frozen per call, `max_hops` 5; 200 iterations per run; Python 3.13, Intel Xeon 2.10 GHz, 4 vCPU, Linux | Measured | `python backend/benchmark.py`; [data](docs/benchmarks.md) |
+| Full-graph scoring, median of 5 per-run medians: 0.28 ms (49 nodes), 2.88 ms (509 nodes) | Same as above | Measured | `python backend/benchmark.py`; [data](docs/benchmarks.md) |
+| Hash-chain check, median of 5 per-run medians: 41.48 µs (10 records), 427.08 µs (100 records) | Same as above | Measured | `python backend/benchmark.py`; [data](docs/benchmarks.md) |
+| 5 of 5 injected chain accounts score `WATCH` or `HIGH_RISK`; 40 of 40 background accounts score `CLEAN` | 45-account graph built inside `validation.py`, seed 42; CI asserts all chain flagged and at least 85% background clean | Test (CI) | `cd backend && python validation.py`; [output](docs/validation.md) |
 
-Latency figures are one run on one machine and vary across hardware.
+Per-run medians vary up to 1.8x on this shared VM; ranges and p99 are in [docs/benchmarks.md](docs/benchmarks.md).
 
 ## Verification and assurance
 
@@ -89,7 +91,7 @@ cd backend && python -m uvicorn main:app --port 8000
 cd frontend && npm install && npm run dev
 ```
 
-Reproduce the latency table with `python backend/benchmark.py`.
+Reproduce the latency rows: run `python backend/benchmark.py` five times and compare with [docs/benchmarks.md](docs/benchmarks.md).
 
 ## Repository layout
 
@@ -101,8 +103,8 @@ Reproduce the latency table with `python backend/benchmark.py`.
 | `backend/main.py` | FastAPI REST endpoints and WebSocket hub |
 | `backend/simulate.py` | Synthetic graph with an injected mule network |
 | `backend/explainer.py`, `backend/dispatcher.py` | Plain-language freeze reasons; alert records |
-| `backend/test_system.py`, `backend/validation.py` | Engine tests; scorer validation |
-| `backend/benchmark.py` | Latency benchmark |
+| `backend/test_system.py`, `backend/validation.py`, `backend/benchmark.py` | Engine tests, scorer validation, latency benchmark |
+| `docs/` | Benchmark data and raw test output |
 | `verify_live_stack.py` | In-process API checks |
 | `frontend/src/` | React dashboard with canvas graph view |
 | `frontend/api/` | Copy of the backend packaged as a Vercel serverless function |
