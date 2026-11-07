@@ -4,7 +4,7 @@ Latency of the in-process engine, measured with `backend/benchmark.py`.
 
 ## Setup
 
-- Commit: `b6afe08` (engine code identical to `1756b4b`).
+- Commit: `e35ebcb` (engine code identical to `37b3362`).
 - Date: 2026-11-07, runs between 07:43:48 and 07:43:53 UTC.
 - Hardware: Intel Xeon @ 2.10 GHz, 4 vCPU, shared cloud VM.
 - OS: Linux 6.18.44. Python 3.13.18. No build flags (interpreted).
@@ -36,7 +36,7 @@ for i in 1 2 3 4 5; do python backend/benchmark.py | grep 'p50 ='; done
 ## Raw output
 
 ```text
-start: 2026-11-07 07:43:48 UTC, commit b6afe08
+start: 2026-11-07 07:43:48 UTC, commit e35ebcb
 ### run 1 (07:43:48)
 Causal BFS Traversal (49 nodes, 159 edges):      p50 =   3.16 µs | p99 =  14.80 µs
 Causal BFS Traversal (509 nodes, 1,539 edges):   p50 =   3.24 µs | p99 =  15.13 µs

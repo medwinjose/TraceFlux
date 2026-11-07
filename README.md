@@ -11,7 +11,7 @@
 - **What:** A clearing-switch simulator. When one account is reported as defrauded, it follows the money forward through later transfers and freezes every account the money reached.
 - **Why it matters:** Each bank sees only its own ledger. Stolen funds can pass through mule accounts at several banks before anyone traces them.
 - **Headline result:** On the 49-account synthetic graph, one fraud report freezes all 9 injected chain accounts in a median of 4.09 µs (Measured; median of 5 runs of 200 iterations, Intel Xeon 2.10 GHz; [data and command](docs/benchmarks.md)).
-- **Status:** Research prototype on synthetic data. Last verified 2026-11-07 at commit `b6afe08`.
+- **Status:** Research prototype on synthetic data. Last verified 2026-11-07 at commit `e35ebcb`.
 - **Not in scope:** Real bank data or real-time ingestion; authentication or TLS on the API.
 - **Author:** Medwin Jose, Student, VIT Bhopal University. ORCID: TODO.
 
@@ -55,7 +55,7 @@ Per-run medians vary up to 1.8x on this shared VM; ranges and p99 are in [docs/b
 ## Verification and assurance
 
 - Tests: `backend/test_system.py` has 4 test functions; 4 passed under pytest on 2026-11-07 (`cd backend && python -m pytest test_system.py`).
-- CI (GitHub Actions, Ubuntu, Python 3.11) runs `test_system.py`, `validation.py` and `verify_live_stack.py` on every push and pull request to `main`. The run for commit `1756b4b` passed.
+- CI (GitHub Actions, Ubuntu, Python 3.11) runs `test_system.py`, `validation.py` and `verify_live_stack.py` on every push and pull request to `main`. The CI badge shows the result for the latest commit on `main`.
 - `verify_live_stack.py` calls the API in-process: `/graph_data`, `/accounts/MULE1/explain`, `/report_fraud/VICTIM` and `/alerts`.
 - No linter, type checker or coverage tool is configured.
 - Security notes: [SECURITY.md](SECURITY.md).

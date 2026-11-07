@@ -2,7 +2,7 @@
 
 Verbatim output of the test, validation and API-check scripts.
 
-- Commit: `b6afe08` (engine code identical to `1756b4b`).
+- Commit: `e35ebcb` (engine code identical to `37b3362`).
 - Date: 2026-11-07, 07:43:40 to 07:43:44 UTC.
 - Hardware: Intel Xeon @ 2.10 GHz, 4 vCPU. Linux 6.18.44. Python 3.13.18.
 - `validation.py` seeds `random` with 42 and builds its own 45-account graph (40 background, 5 chain). It asserts that every chain account scores `WATCH` or `HIGH_RISK` and that at least 85% of background accounts score `CLEAN`.
@@ -20,7 +20,7 @@ The benchmark section of this run is superseded by the 5-run set in [benchmarks.
 ```text
 ## Evidence run
 start: 2026-11-07 07:43:40 UTC
-commit: b6afe0809e7c2af1a342c31339a6c256b35d8a3a (code unchanged since 1756b4b)
+commit: e35ebcb3521a55fd6c8999a8d9a3e588ee20f08a (recorded as b6afe08 before message rewrite; tree identical; code unchanged since 37b3362)
 python: Python 3.13.18
 cpu: Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU
 os: Linux 6.18.44-fc-v310
