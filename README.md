@@ -66,7 +66,9 @@ Latency on this shared VM varies between runs, and a single run can fall outside
 
 ## Quick start
 
-Requires Python 3.11 or newer and Node.js 18 or newer.
+A hosted demo runs at [traceflux.vercel.app](https://traceflux.vercel.app), served from the `frontend/api/` copy of the backend.
+
+To run it locally, install Python 3.11 or newer and Node.js 18 or newer.
 
 ```bash
 git clone https://github.com/medwinjose/TraceFlux.git
