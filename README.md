@@ -1,89 +1,82 @@
-# TraceFlux
+# TraceFlux - Cross-Bank Fraud Tracing Simulator
 
-A single-node simulator that traces stolen funds across banks with a time-ordered graph search and freezes the accounts they reach.
+[![CI](https://github.com/medwinjose/TraceFlux/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/medwinjose/TraceFlux/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 
-[![CI](https://github.com/medwinjose/TraceFlux/actions/workflows/ci.yml/badge.svg)](https://github.com/medwinjose/TraceFlux/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+TraceFlux is a single-process simulator of a payment clearing switch that, on a fraud report, follows stolen funds forward only through transfers made after the money arrived and freezes every account it reached.
 
-[Docs](docs/README.md) | [Results](#key-results) | [Limitations](#limitations-and-scope) | [Quick start](#quick-start)
+## The Problem
 
-## At a glance
+When money is stolen from a bank customer, it is often moved quickly through a chain of mule accounts held at different banks. Each bank sees only its own ledger, so no single institution can follow the funds past its own boundary. Tracing then depends on manual recall requests between banks while the money keeps moving.
 
-- **What:** A clearing-switch simulator. When one account is reported as defrauded, it follows the money forward through later transfers and freezes every account the money reached.
-- **Why it matters:** Each bank sees only its own ledger. Stolen funds can pass through mule accounts at several banks before anyone traces them.
-- **Headline result:** On the 49-account synthetic graph, one fraud report freezes all 9 injected chain accounts in a median of 4.09 µs (Measured; median of 5 runs of 200 iterations, Intel Xeon 2.10 GHz; [data and command](docs/benchmarks.md)).
-- **Status:** Research prototype on synthetic data. Last verified 2026-11-07 at commit `e35ebcb`.
-- **Not in scope:** Real bank data or real-time ingestion; authentication or TLS on the API.
-- **Author:** Medwin Jose, Student, VIT Bhopal University. ORCID: TODO.
+A clearing switch that settles transfers between banks does see every hop. Freezing everything reachable from the reported account is not enough, though: a mule account can also have older, legitimate payments, and following those would freeze innocent counterparties.
 
-## Problem and approach
+## The Solution
 
-A fraud report names one account and a time. Funds that left that account then moved hop by hop through other accounts, often at other banks. The simulator keeps every transfer as a timestamped directed edge between accounts. On a report, a breadth-first search follows each outgoing transfer made at or after the tainted money arrived. A mule's older, unrelated payments are therefore not frozen. A separate scorer rates every account on five behavioural signals before any report exists. Every freeze is written to a hash-chained log with an HMAC signature per entry.
+TraceFlux models the switch as a timestamped transaction graph and acts on a fraud report in one pass:
 
-| Decision | Instead of | Why | Record |
-| --- | --- | --- | --- |
-| Time-respecting BFS from the reported account | Freezing every account reachable in the graph | Avoids freezing recipients of payments made before the money arrived | `test_timestamp_filtered_propagation` in `backend/test_system.py` |
-| Fixed-weight linear score over 5 features | A trained model | Each score splits into per-feature contributions served by `/accounts/{id}/explain` | `backend/ml_engine/anomaly_scorer.py` |
-| SHA-256 hash chain plus HMAC-SHA256 per entry | Plain append-only list | Editing any past record changes every later hash | `backend/security.py` |
+- **Time-respecting trace.** A breadth-first search starts at the reported account and follows a transfer only if it happened at or after the moment tainted money reached the sending account. A mule's earlier, unrelated payments are not followed. The filter does not apply to the reported account's own transfers: all of them are followed.
+- **Freeze on contact.** Every account the trace reaches is marked frozen, up to a hop limit (`max_hops`, 3 by default through the API, adjustable through `POST /settings`).
+- **Risk scores before any report.** Each account gets a score from five behavioural signals: fan-out ratio (weight 0.35), hold time before forwarding (0.30), reactivation after 30 or more days of inactivity (0.20), amounts just below reporting thresholds (0.10) and 24-hour transaction rate (0.05). Scores of 0.75 and above are `HIGH_RISK`, 0.45 and above `WATCH`. The weights are fixed by hand, not learned.
+- **A written reason for every freeze.** `explainer.py` turns the trace position and the score breakdown into one or two plain-language sentences.
+- **Tamper-evident record.** Each freeze is appended to a log in which every entry carries the SHA-256 hash of the previous entry and an HMAC-SHA256 signature. Changing any past entry breaks every later hash.
+- **No double processing.** A second report for the same account returns HTTP 409 until the simulation is reset.
+
+| Design decision | Instead of | Why |
+|---|---|---|
+| Time-respecting BFS from the reported account | Freezing every account reachable in the graph | Recipients of payments made before the stolen money arrived are not frozen |
+| Fixed-weight linear score over five features | A trained model | Every score splits into per-feature contributions, served by `GET /accounts/{id}/explain` |
+| SHA-256 hash chain with an HMAC-SHA256 signature per entry | A plain append-only list | Editing a past record changes every later hash |
 
 ## Architecture
 
-```mermaid
-graph LR
-    accTitle: TraceFlux components
-    accDescr: A fraud report enters the FastAPI app, which calls the BFS engine, the risk scorer and the evidence log, and streams events over a WebSocket to the React graph view.
-    Report["POST /report_fraud"] --> API["FastAPI app (main.py)"]
-    API --> BFS["Time-ordered BFS (graph_engine.py)"]
-    API --> Scorer["Risk scorer (anomaly_scorer.py)"]
-    API --> Log["Hash-chained evidence log (security.py)"]
-    API -->|"WebSocket /ws"| UI["React canvas graph (frontend/)"]
+One FastAPI process holds the whole graph in memory, with inbound and outbound transfer lists per account. `simulate.py` builds a synthetic graph of background accounts plus an injected mule network of 9 accounts (victim, 6 mules over three hops, 2 cash-out accounts). A React dashboard draws the graph on an HTML canvas and animates each freeze from WebSocket events.
+
+A fraud report passes through these steps in `main.py`:
+
+```
+POST /report_fraud/{id} → replay check (409 if already reported) → time-respecting BFS (graph_engine.py)
+  → per frozen account: risk score breakdown (anomaly_scorer.py) → plain-language reason (explainer.py)
+  → hash-chained, HMAC-signed evidence record (security.py) → alert record (dispatcher.py)
+  → WebSocket TAG_PROPAGATED event per hop → dashboard
 ```
 
-One FastAPI process holds the whole graph in memory (`TransactionGraph`, with per-account inbound and outbound edge lists). `simulate.py` builds a synthetic graph of background accounts plus a 9-account injected mule network. On a report, `graph_engine.py` runs the BFS (default `max_hops` 3 through the API). `explainer.py` writes a plain-language reason for each freeze. `security.py` appends one signed record per frozen account. The React frontend draws the graph on an HTML canvas and animates freezes from WebSocket events. The scorer weights are `fan_out_ratio` 0.35, `hold_time_inverse` 0.30, `dormant_reactivation` 0.20, `structuring_score` 0.10 and `velocity` 0.05; scores of 0.75 and above are `HIGH_RISK`, 0.45 and above `WATCH`.
+## Results
 
-## Key results
+Measured on a shared cloud VM (Intel Xeon 2.10 GHz, 4 vCPU, Linux, Python 3.13) with `backend/benchmark.py`: 5 runs, each timing 200 calls after 10 warm-up calls, on the synthetic graph with `max_hops` 5. Ranges are the lowest and highest per-run median.
 
-| Claim | Setup | Evidence type | Reproduce |
-| --- | --- | --- | --- |
-| A report freezes the downstream account and not the recipient of an earlier, unrelated transfer; 4 of 4 tests pass | 4-account hand-built graph | Test (CI, Python 3.11) | `cd backend && python -m pytest test_system.py`; [output](docs/validation.md) |
-| BFS freeze latency, median of 5 per-run medians: 4.09 µs (49 nodes, 159 edges), 4.55 µs (509 nodes, 1,539 edges) | 9 accounts frozen per call, `max_hops` 5; 200 iterations per run; Python 3.13, Intel Xeon 2.10 GHz, 4 vCPU, Linux | Measured | `python backend/benchmark.py`; [data](docs/benchmarks.md) |
-| Full-graph scoring, median of 5 per-run medians: 0.28 ms (49 nodes), 2.88 ms (509 nodes) | Same as above | Measured | `python backend/benchmark.py`; [data](docs/benchmarks.md) |
-| Hash-chain check, median of 5 per-run medians: 41.48 µs (10 records), 427.08 µs (100 records) | Same as above | Measured | `python backend/benchmark.py`; [data](docs/benchmarks.md) |
-| 5 of 5 injected chain accounts score `WATCH` or `HIGH_RISK`; 40 of 40 background accounts score `CLEAN` | 45-account graph built inside `validation.py`, seed 42; CI asserts all chain flagged and at least 85% background clean | Test (CI) | `cd backend && python validation.py`; [output](docs/validation.md) |
+| Condition | Result |
+|---|---|
+| Fraud report on the 49-account graph (159 transfers) | All 9 injected accounts frozen; median 3.16 to 5.58 µs per report (measured) |
+| Fraud report on the 509-account graph (1,539 transfers) | All 9 injected accounts frozen; median 3.24 to 5.99 µs per report (measured) |
+| Scoring every account, 49 and 509 accounts | Median 0.21 to 0.35 ms and 2.79 to 2.95 ms per pass (measured) |
+| Checking the hash chain, 10 and 100 records | Median 41.35 to 42.73 µs and 412.62 to 441.84 µs (measured) |
+| Same report through the API (`max_hops` 3) | 7 of 9 injected accounts frozen; the 2 cash-out accounts are beyond the hop limit (in-process API check, output only) |
+| Earlier, unrelated transfer from a mule | Its recipient is not frozen; the later recipient is (tested) |
+| Scoring on a 45-account graph, seed 42 | 5 of 5 injected accounts scored `WATCH` or `HIGH_RISK`; 40 of 40 background accounts scored `CLEAN` (tested) |
 
-Per-run medians vary up to 1.8x on this shared VM; ranges and p99 are in [docs/benchmarks.md](docs/benchmarks.md).
+Latency on this shared VM varies between runs, and a single run can fall outside these ranges. The graph is synthetic and `simulate.py` is not seeded: account counts and transfer counts are fixed, bank assignment and background transfers are not. Raw output, setup and commands are in [docs/benchmarks.md](docs/benchmarks.md) and [docs/validation.md](docs/validation.md).
 
-## Verification and assurance
+## Engineering
 
-- Tests: `backend/test_system.py` has 4 test functions; 4 passed under pytest on 2026-11-07 (`cd backend && python -m pytest test_system.py`).
-- CI (GitHub Actions, Ubuntu, Python 3.11) runs `test_system.py`, `validation.py` and `verify_live_stack.py` on every push and pull request to `main`. The CI badge shows the result for the latest commit on `main`.
-- `verify_live_stack.py` calls the API in-process: `/graph_data`, `/accounts/MULE1/explain`, `/report_fraud/VICTIM` and `/alerts`.
-- No linter, type checker or coverage tool is configured.
-- Security notes: [SECURITY.md](SECURITY.md).
-
-## Limitations and scope
-
-- Synthetic data only. `simulate.py` is not seeded, so bank assignment and background edges change on each start; node and edge counts do not.
-- Through the API, `max_hops` defaults to 3, so a report at `VICTIM` freezes 7 of the 9 chain accounts; the two cash-out accounts are not reached. The tests and benchmark use the engine default of 5, which freezes all 9.
-- The time filter starts at the first hop: all outgoing transfers of the reported account are followed, whatever their time.
-- Scorer weights and thresholds are set by hand for the demo graph. They are not fitted or tested on real fraud data.
-- `validation.py` scores a graph built by its own copy of the graph classes, not by `graph_engine.py`.
-- `GET /evidence_chain/verify` checks the hash links only; it does not check the HMAC signatures.
-- The HMAC key is random per process unless `TRACEFLUX_HMAC_KEY` is set, so signatures do not survive a restart.
-- No authentication, TLS or persistence. All state is in memory and lost on restart. Not for production use.
+- **Structure:** Python backend (FastAPI, Pydantic, Uvicorn) in `backend/`; React 18 dashboard built with Vite and Tailwind CSS in `frontend/`; a copy of the backend in `frontend/api/` packaged as a Vercel serverless function.
+- **Security:** HMAC-SHA256 signatures on freeze commands and evidence records, a SHA-256 hash chain over the evidence log, and per-account replay protection. The HMAC key comes from `TRACEFLUX_HMAC_KEY`, or is random per process when unset, so signatures do not survive a restart. `GET /evidence_chain/verify` checks the hash links, not the signatures. Known security gaps are listed in [SECURITY.md](SECURITY.md).
+- **Interfaces:** REST endpoints for accounts, transfers, graph data, score explanations, fraud reports, settings, alerts, the evidence chain and its verification, and reset; OpenAPI docs at `/docs`; a WebSocket at `/ws` that streams freeze and reset events.
+- **Verification:** engine tests in `backend/test_system.py` (time filter, scoring and explanations, full-chain freeze on the demo graph, unknown accounts, repeated reports and reset), a scorer validation in `backend/validation.py` that builds its graph with its own copy of the graph classes, and in-process API checks in `verify_live_stack.py`. Under pytest, 4 of 4 tests in `test_system.py` passed on 2026-11-07.
+- **CI:** GitHub Actions on Ubuntu with Python 3.11 runs `test_system.py`, `validation.py` and `verify_live_stack.py` on every push and pull request to `main`. No linter or type checker is configured.
 
 ## Quick start
 
-Prerequisites: Python 3.11 or newer, Node.js 18 or newer.
+Requires Python 3.11 or newer and Node.js 18 or newer.
 
 ```bash
-git clone https://github.com/medwinjose/TraceFlux.git && cd TraceFlux
-pip install -r backend/requirements.txt
-cd backend && python test_system.py && python validation.py && cd .. && python verify_live_stack.py
+git clone https://github.com/medwinjose/TraceFlux.git
+cd TraceFlux
+pip install -r backend/requirements.txt pytest
+cd backend && python -m pytest test_system.py && python validation.py && cd ..
+python verify_live_stack.py
 ```
 
-Run the API (port 8000, OpenAPI docs at `/docs`) and, in a second terminal, the dashboard (port 5173):
+Run the API (port 8000), then the dashboard (port 5173) in a second terminal:
 
 ```bash
 cd backend && python -m uvicorn main:app --port 8000
@@ -93,31 +86,37 @@ cd backend && python -m uvicorn main:app --port 8000
 cd frontend && npm install && npm run dev
 ```
 
-Reproduce the latency rows: run `python backend/benchmark.py` five times and compare with [docs/benchmarks.md](docs/benchmarks.md).
+Reproduce the latency results (compare with [docs/benchmarks.md](docs/benchmarks.md)):
+
+```bash
+python backend/benchmark.py
+```
+
+## Research status and roadmap
+
+TraceFlux is a working prototype on synthetic data: the trace, the risk scores, the evidence log, the API and the dashboard run end to end, and the test and validation scripts pass in CI. Next, in order:
+
+1. Check HMAC signatures in `GET /evidence_chain/verify`.
+2. Seed `simulate.py` so every start produces the same graph.
+3. Apply the time filter to the reported account's own outgoing transfers.
+
+Out of scope: real bank data, streaming ingestion, authentication, TLS and persistence; all state is in memory and lost on restart, and the project is not for production use. Known security gaps are listed in [SECURITY.md](SECURITY.md).
 
 ## Repository layout
 
 | Path | Contents |
-| --- | --- |
-| `backend/graph_engine.py` | In-memory transaction graph and time-ordered BFS |
+|---|---|
+| `backend/graph_engine.py` | In-memory transaction graph and time-respecting BFS |
 | `backend/ml_engine/anomaly_scorer.py` | Five-feature risk score, classification and per-feature breakdown |
 | `backend/security.py` | Hash-chained evidence log, HMAC signing, replay check |
-| `backend/main.py` | FastAPI REST endpoints and WebSocket hub |
+| `backend/main.py` | FastAPI REST endpoints and WebSocket |
 | `backend/simulate.py` | Synthetic graph with an injected mule network |
-| `backend/explainer.py`, `backend/dispatcher.py` | Plain-language freeze reasons; alert records |
+| `backend/explainer.py`, `backend/dispatcher.py` | Plain-language freeze reasons; in-memory alert records |
 | `backend/test_system.py`, `backend/validation.py`, `backend/benchmark.py` | Engine tests, scorer validation, latency benchmark |
-| `docs/` | Benchmark data and raw test output |
 | `verify_live_stack.py` | In-process API checks |
-| `frontend/src/` | React dashboard with canvas graph view |
-| `frontend/api/` | Copy of the backend packaged as a Vercel serverless function |
-| `.github/workflows/ci.yml` | CI workflow |
-
-## Roadmap
-
-- Check HMAC signatures in `GET /evidence_chain/verify`.
-- Seed `simulate.py` so every start produces the same graph.
-- Apply the time filter to the reported account's own outgoing transfers.
+| `frontend/` | React dashboard; `frontend/api/` holds the Vercel serverless copy of the backend |
+| `docs/` | Benchmark setup and raw output, raw test output ([index](docs/README.md)) |
 
 ## License
 
-MIT; see [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).
